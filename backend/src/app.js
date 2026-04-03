@@ -10,6 +10,7 @@ const userRoutes = require('./routes/userRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const productRoutes = require('./routes/productRoutes');
 const contactRoutes = require('./routes/contactRoutes');
+const cartRoutes = require('./routes/cartRoutes');
 const { notFound, errorHandler } = require('./middleware/errorHandler');
 const logger = require('./utils/logger');
 
@@ -66,6 +67,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/products', productRoutes);
+app.use('/api/cart', cartRoutes);
 app.use('/api/contact', contactRoutes);
 
 app.use(notFound);

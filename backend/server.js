@@ -10,7 +10,7 @@ if (!fs.existsSync(logsDir)) {
   fs.mkdirSync(logsDir, { recursive: true });
 }
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 8080;
 
 const startServer = async () => {
   try {

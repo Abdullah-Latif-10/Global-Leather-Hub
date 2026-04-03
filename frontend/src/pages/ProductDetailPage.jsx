@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import api from "../utils/api";
 import { useAuth } from "../context/authContext";
-import { ArrowLeft, CheckCircle, Package, Loader2, AlertCircle, Maximize2, Tag, Layers, Ruler, Palette } from "lucide-react";
+import { ArrowLeft, CheckCircle, Package, Loader2, AlertCircle, Maximize2, Tag, Layers, Ruler, Palette, ShoppingCart } from "lucide-react";
 
 export default function ProductDetailPage() {
   const { id } = useParams();
@@ -11,6 +11,8 @@ export default function ProductDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeImage, setActiveImage] = useState(0);
+  const [productMessage, setProductMessage] = useState("");
+  const [productBusy, setProductBusy] = useState(false);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -59,6 +61,29 @@ export default function ProductDetailPage() {
       "leather-wallets": "Leather Wallets",
     };
     return categories[cat] || cat;
+  };
+
+  const addToCart = async () => {
+    if (!user) {
+      setProductMessage('Please log in to add items to your cart.');
+      return;
+    }
+    if (user.role === 'admin') {
+      setProductMessage('Admin accounts cannot add items to cart.');
+      return;
+    }
+
+    try {
+      setProductBusy(true);
+      setProductMessage('');
+      await api.post('/cart', { productId: product._id, quantity: 1 });
+      setProductMessage('Added to cart ✔');
+    } catch (err) {
+      setProductMessage(err.response?.data?.message || 'Failed to add to cart.');
+    } finally {
+      setProductBusy(false);
+      setTimeout(() => setProductMessage(''), 2500);
+    }
   };
 
   return (
@@ -207,12 +232,16 @@ export default function ProductDetailPage() {
 
             <div className="mt-auto space-y-4 pt-4 border-t border-border">
               {user?.role !== "admin" ? (
-                <button 
-                  onClick={(e) => { e.preventDefault(); }}
-                  className="btn-primary w-full justify-center text-[13px] py-4 shadow-sm"
-                >
-                  Register to Request Wholesale Quote
-                </button>
+                <>
+                  <button
+                    onClick={(e) => { e.preventDefault(); addToCart(); }}
+                    disabled={productBusy}
+                    className="btn-primary w-full justify-center text-[13px] py-4 shadow-sm"
+                  >
+                    <ShoppingCart className="w-4 h-4 mr-2 inline" /> Add to Cart
+                  </button>
+                  {productMessage && <p className="text-sm text-green-700">{productMessage}</p>}
+                </>
               ) : (
                 <div className="text-center p-3.5 bg-linen/50 rounded-full border border-border text-fog text-[11px] uppercase tracking-widest font-semibold cursor-not-allowed">
                   Admin accounts cannot place orders

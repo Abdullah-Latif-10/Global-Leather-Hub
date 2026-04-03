@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { ArrowRight, CheckCircle, Search, FileX, ChevronLeft, ChevronRight, Package, Loader2, AlertCircle, X, Filter } from "lucide-react";
+import { ArrowRight, CheckCircle, Search, FileX, ChevronLeft, ChevronRight, Package, Loader2, AlertCircle, X, Filter, ShoppingCart } from "lucide-react";
 import api from "../utils/api";
+import { useAuth } from "../context/authContext";
 
 const CATEGORIES = [
   { value: "", label: "All Categories" },
@@ -25,6 +26,9 @@ export default function ProductsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [cartMessage, setCartMessage] = useState("");
+  const [cartBusy, setCartBusy] = useState(false);
+  const { user } = useAuth();
 
   const [search, setSearch] = useState(searchParams.get("search") || "");
   const [category, setCategory] = useState(searchParams.get("category") || "");
@@ -82,6 +86,25 @@ export default function ProductsPage() {
       return p;
     });
     setShowMobileFilters(false);
+  };
+
+  const addToCart = async (productId) => {
+    if (!user) {
+      setCartMessage('Please log in to add items to your cart.');
+      return;
+    }
+
+    try {
+      setCartBusy(true);
+      setCartMessage('');
+      await api.post('/cart', { productId, quantity: 1 });
+      setCartMessage('Added to cart ✔');
+    } catch (err) {
+      setCartMessage(err.response?.data?.message || 'Failed to add to cart.');
+    } finally {
+      setCartBusy(false);
+      setTimeout(() => setCartMessage(''), 2500);
+    }
   };
 
   const clearFilters = () => {
@@ -317,10 +340,23 @@ export default function ProductsPage() {
                         </div>
                       </div>
                       
-                      <Link to={`/products/${item._id}`} className="btn-outline w-full justify-center text-[12px] py-2.5 transition-colors group-hover:bg-espresso group-hover:text-paper group-hover:border-espresso">
-                        View Details
-                      </Link>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          onClick={async () => addToCart(item._id)}
+                          disabled={cartBusy}
+                          className="btn-primary w-full justify-center text-[12px] py-2.5"
+                        >
+                          <ShoppingCart className="w-4 h-4 mr-2" />
+                          Add to Cart
+                        </button>
+                        <Link to={`/products/${item._id}`} className="btn-outline w-full justify-center text-[12px] py-2.5 transition-colors group-hover:bg-espresso group-hover:text-paper group-hover:border-espresso">
+                          View Details
+                        </Link>
+                      </div>
                     </div>
+                    {cartMessage && (
+                      <p className="text-[11px] text-green-700 mt-2">{cartMessage}</p>
+                    )}
                   </article>
                 ))}
               </div>
