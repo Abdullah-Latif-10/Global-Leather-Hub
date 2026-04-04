@@ -154,9 +154,38 @@ const mongoIdParam = [
     .withMessage('Invalid ID format'),
 ];
 
+const orderTrackingValidator = [
+  param('id')
+    .isMongoId()
+    .withMessage('Invalid order ID'),
+  body('number')
+    .trim()
+    .notEmpty()
+    .withMessage('Tracking number is required'),
+  body('carrier')
+    .optional()
+    .trim(),
+  body('url').optional().trim(),
+];
+
+const bulkOrderPatchValidator = [
+  param('id')
+    .isMongoId()
+    .withMessage('Invalid bulk order ID'),
+  body('status')
+    .optional()
+    .isIn(['pending', 'quoted', 'accepted', 'rejected', 'completed'])
+    .withMessage('Invalid status'),
+  body('adminNotes')
+    .optional()
+    .trim(),
+];
+
 module.exports = {
   productValidator,
   updateProductValidator,
   orderStatusValidator,
+  orderTrackingValidator,
+  bulkOrderPatchValidator,
   mongoIdParam,
 };
