@@ -73,11 +73,14 @@ export default function ProductDetailPage() {
       return;
     }
 
+    const minimumQty = Number(product?.moq || 1);
+
     try {
       setProductBusy(true);
       setProductMessage('');
-      await api.post('/cart', { productId: product._id, quantity: 1 });
-      setProductMessage('Added to cart ✔');
+      await api.post('/cart', { productId: product._id, quantity: minimumQty });
+      window.dispatchEvent(new Event('cartUpdated'));
+      setProductMessage(`Added ${minimumQty} item${minimumQty > 1 ? 's' : ''} to cart ✔`);
     } catch (err) {
       setProductMessage(err.response?.data?.message || 'Failed to add to cart.');
     } finally {
