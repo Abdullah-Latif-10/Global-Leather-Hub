@@ -52,6 +52,10 @@ const shippingDetailsSchema = new mongoose.Schema(
       required: [true, 'Phone number is required'],
       trim: true,
     },
+    company: {
+      type: String,
+      trim: true,
+    },
     postalCode: {
       type: String,
       trim: true,
@@ -97,6 +101,36 @@ const orderSchema = new mongoose.Schema(
       required: [true, 'Total amount is required'],
       min: [0, 'Total amount cannot be negative'],
     },
+    currency: {
+      type: String,
+      enum: ['USD', 'EUR', 'GBP', 'AUD', 'CAD', 'CNY'],
+      default: 'USD',
+    },
+    paymentStatus: {
+      type: String,
+      enum: ['unpaid', 'paid', 'failed', 'refunded'],
+    },
+    paymentMethod: {
+      type: String,
+      default: 'stripe',
+    },
+    stripeCheckoutSessionId: {
+      type: String,
+      sparse: true,
+      index: true,
+    },
+    stripePaymentIntentId: {
+      type: String,
+    },
+    paidAt: {
+      type: Date,
+    },
+    tracking: {
+      carrier: { type: String, trim: true },
+      number: { type: String, trim: true },
+      url: { type: String, trim: true },
+      updatedAt: { type: Date },
+    },
     notes: {
       type: String,
       trim: true,
@@ -121,7 +155,7 @@ orderSchema.pre('save', async function (next) {
 // Indexes
 orderSchema.index({ user: 1, createdAt: -1 });
 orderSchema.index({ status: 1 });
-orderSchema.index({ orderNumber: 1 });
+orderSchema.index({ paymentStatus: 1, createdAt: -1 });
 
 const Order = mongoose.model('Order', orderSchema);
 module.exports = Order;
