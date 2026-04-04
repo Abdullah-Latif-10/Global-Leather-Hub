@@ -146,4 +146,55 @@ const sendContactEmail = async (formData) => {
   }
 };
 
-module.exports = { sendOTPEmail, sendContactEmail };
+const sendBulkOrderNotification = async (bulkOrder) => {
+  const transporter = createTransporter();
+
+  const productsList = bulkOrder.products.map(p =>
+    `<li>${p.name} - Quantity: ${p.quantity}${p.customizations ? ` - Customizations: ${p.customizations}` : ''}${p.notes ? ` - Notes: ${p.notes}` : ''}</li>`
+  ).join('');
+
+  const html = `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8" />
+      <title>New Bulk Order Request</title>
+    </head>
+    <body style="margin:0;padding:20px;font-family:Arial,sans-serif;background-color:#f4f4f4;">
+      <div style="max-w:600px;margin:0 auto;background:#fff;padding:30px;border-radius:8px;box-shadow:0 2px 5px rgba(0,0,0,0.1);">
+        <h2 style="color:#1a1a1a;border-bottom:2px solid #D4AF37;padding-bottom:10px;">New Bulk Order Quotation Request</h2>
+        <table width="100%" cellpadding="10" cellspacing="0" style="margin-top:20px;">
+          <tr><td width="30%"><strong>Order ID:</strong></td><td>${bulkOrder._id}</td></tr>
+          <tr style="background:#f9f9f9;"><td width="30%"><strong>Customer:</strong></td><td>${bulkOrder.user.username} (${bulkOrder.user.email})</td></tr>
+          <tr><td width="30%"><strong>Currency:</strong></td><td>${bulkOrder.currency}</td></tr>
+          <tr style="background:#f9f9f9;"><td width="30%"><strong>Estimated Value:</strong></td><td>${bulkOrder.currency} ${bulkOrder.totalEstimatedValue.toFixed(2)}</td></tr>
+          <tr><td width="30%"><strong>Date:</strong></td><td>${new Date(bulkOrder.createdAt).toLocaleDateString()}</td></tr>
+        </table>
+        <h3 style="margin-top:30px;color:#1a1a1a;">Requested Products:</h3>
+        <ul style="background:#f9f9f9;padding:15px;border-left:4px solid #D4AF37;line-height:1.6;color:#555;">
+          ${productsList}
+        </ul>
+        <p style="margin-top:20px;color:#666;font-size:14px;">
+          Please review this bulk order request and provide a quotation. You can update the order status and add quotation details through the admin panel.
+        </p>
+      </div>
+    </body>
+    </html>
+  `;
+
+  try {
+    const info = await transporter.sendMail({
+      from: `"Global Leather Hub" <${process.env.FROM_EMAIL}>`,
+      to: 'crisitiano678@gmail.com',
+      subject: `Bulk Order Request - ${bulkOrder._id}`,
+      html,
+    });
+    logger.info(`Bulk order notification sent: ${info.messageId}`);
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    logger.error(`Failed to send bulk order notification: ${error.message}`);
+    throw new Error('Failed to send bulk order notification');
+  }
+};
+
+module.exports = { sendOTPEmail, sendContactEmail, sendBulkOrderNotification };
