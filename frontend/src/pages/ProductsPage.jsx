@@ -2,7 +2,9 @@ import React, { useState, useEffect, useCallback } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { ArrowRight, CheckCircle, Search, FileX, ChevronLeft, ChevronRight, Package, Loader2, AlertCircle, X, Filter, ShoppingCart } from "lucide-react";
 import api from "../utils/api";
+import { formatCurrency } from "../utils/currency";
 import { useAuth } from "../context/authContext";
+import toast from "react-hot-toast";
 
 const CATEGORIES = [
   { value: "", label: "All Categories" },
@@ -26,7 +28,6 @@ export default function ProductsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
-  const [cartMessage, setCartMessage] = useState("");
   const [cartBusy, setCartBusy] = useState(false);
   const { user } = useAuth();
 
@@ -88,22 +89,23 @@ export default function ProductsPage() {
     setShowMobileFilters(false);
   };
 
-  const addToCart = async (productId) => {
+  const addToCart = async (productId, minQty = 1) => {
     if (!user) {
-      setCartMessage('Please log in to add items to your cart.');
+      toast.error('Please log in to add items to your cart.');
       return;
     }
 
+    const quantity = Number(minQty) || 1;
+
     try {
       setCartBusy(true);
-      setCartMessage('');
-      await api.post('/cart', { productId, quantity: 1 });
-      setCartMessage('Added to cart ✔');
+      await api.post('/cart', { productId, quantity });
+      toast.success(`Added ${quantity} item${quantity > 1 ? 's' : ''} to cart`);
+      window.dispatchEvent(new Event('cartUpdated'));
     } catch (err) {
-      setCartMessage(err.response?.data?.message || 'Failed to add to cart.');
+      toast.error(err.response?.data?.message || 'Failed to add to cart.');
     } finally {
       setCartBusy(false);
-      setTimeout(() => setCartMessage(''), 2500);
     }
   };
 
@@ -334,15 +336,15 @@ export default function ProductsPage() {
                           <span className="text-[10px] text-fog uppercase tracking-widest font-medium mb-0.5">Price</span>
                           <span className="text-sienna text-balance font-medium flex items-baseline gap-1">
                             <span className="text-sm">from</span>
-                            <span className="text-lg">${item.pricingTiers?.[0]?.pricePerUnit?.toFixed(2) || "—"}</span>
+                            <span className="text-lg">{formatCurrency(item.pricingTiers?.[0]?.pricePerUnit || 0, user?.preferredCurrency)}</span>
                             <span className="text-xs text-fog font-normal">/ea</span>
                           </span>
                         </div>
                       </div>
                       
-                      <div className="grid grid-cols-2 gap-2">
+                      <div className="grid  gap-2">
                         <button
-                          onClick={async () => addToCart(item._id)}
+                          onClick={async () => addToCart(item._id, item.moq || 1)}
                           disabled={cartBusy}
                           className="btn-primary w-full justify-center text-[12px] py-2.5"
                         >
@@ -354,9 +356,6 @@ export default function ProductsPage() {
                         </Link>
                       </div>
                     </div>
-                    {cartMessage && (
-                      <p className="text-[11px] text-green-700 mt-2">{cartMessage}</p>
-                    )}
                   </article>
                 ))}
               </div>
