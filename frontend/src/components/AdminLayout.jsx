@@ -7,13 +7,15 @@ import {
   Users,
   ChevronLeft,
   ChevronRight,
-  Shield
+  Shield,
+  FileStack,
 } from "lucide-react";
 
 const ADMIN_NAV = [
   { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
   { label: "Products", href: "/admin/products", icon: Package },
   { label: "Orders", href: "/admin/orders", icon: ShoppingCart },
+  { label: "Bulk RFQs", href: "/admin/bulk-orders", icon: FileStack },
   { label: "Customers", href: "/admin/customers", icon: Users },
 ];
 
