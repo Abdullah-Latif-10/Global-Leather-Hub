@@ -365,10 +365,16 @@ export default function AdminCustomers() {
             
             {/* Modal Footer */}
             {!loadingOrders && !ordersError && customerOrders.length > 0 && (
-              <div className="border-t border-border p-4 bg-paper shrink-0 flex justify-between items-center">
-                <span className="text-sm text-fog">Total Orders: {customerOrders.length}</span>
+              <div className="border-t border-border p-4 bg-paper shrink-0 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                <span className="text-sm text-fog">
+                  Orders shown: {customerOrders.length} (paid + unpaid)
+                </span>
                 <span className="text-espresso font-medium text-lg">
-                  Lifetime Value: ${customerOrders.reduce((acc, order) => acc + (order.totalAmount || 0), 0).toFixed(2)}
+                  Paid revenue: $
+                  {customerOrders
+                    .filter((o) => o.paymentStatus === "paid" || o.paymentStatus == null)
+                    .reduce((acc, order) => acc + (order.totalAmount || 0), 0)
+                    .toFixed(2)}
                 </span>
               </div>
             )}
