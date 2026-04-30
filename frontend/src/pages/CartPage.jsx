@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import api from "../utils/api";
 import { useAuth } from "../context/authContext";
 import { ShoppingCart, X, Minus, Plus } from "lucide-react";
+import { convertCurrency, formatCurrency } from "../utils/currency";
 import toast from "react-hot-toast";
 
 export default function CartPage() {
@@ -165,7 +166,7 @@ export default function CartPage() {
                       </div>
                       <div>
                         <h3 className="text-sm font-semibold text-espresso">{item.productName}</h3>
-                        <p className="text-xs text-fog mt-1">${item.pricePerUnit.toFixed(2)} / unit</p>
+                        <p className="text-xs text-fog mt-1">{formatCurrency(item.pricePerUnit, user?.preferredCurrency, true)} / unit</p>
                       </div>
                     </div>
 
@@ -199,7 +200,7 @@ export default function CartPage() {
                     </div>
 
                     <div className="flex items-center gap-3 text-sm md:ml-8">
-                      <span className="font-semibold">${(item.quantity * item.pricePerUnit).toFixed(2)}</span>
+                      <span className="font-semibold">{formatCurrency(item.quantity * item.pricePerUnit, user?.preferredCurrency, true)}</span>
                       <button
                         onClick={() => removeItem(item.product?._id || item.product)}
                         className="text-rust hover:text-red-600"
@@ -220,8 +221,8 @@ export default function CartPage() {
                 Clear Cart
               </button>
               <div className="text-right">
-                <p className="text-fog text-sm">Total</p>
-                <p className="text-2xl font-semibold text-espresso">${cart.totalAmount.toFixed(2)}</p>
+                <p className="text-fog text-sm">Total Estimation (Before Shipping)</p>
+                <p className="text-2xl font-semibold text-espresso">{formatCurrency(cart.totalAmount, user?.preferredCurrency, true)}</p>
               </div>
             </div>
 
@@ -319,7 +320,7 @@ export default function CartPage() {
                 disabled={checkoutBusy}
                 className="btn-primary w-full py-3"
               >
-                {checkoutBusy ? 'Redirecting to secure payment…' : `Pay with card ($${cart.totalAmount.toFixed(2)})`}
+                {checkoutBusy ? 'Redirecting to secure payment…' : `Proceed to Secure Payment`}
               </button>
             </form>
           </>

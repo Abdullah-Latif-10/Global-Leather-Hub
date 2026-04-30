@@ -3,6 +3,8 @@ const Product = require('../models/Product');
 const Order = require('../models/Order');
 const User = require('../models/User');
 const { getStripe, amountToStripeUnit } = require('../utils/stripeClient');
+const { calculateShippingCost, getShippingRestrictions } = require('../utils/shipping');
+const { convertCurrency } = require('../utils/currency');
 
 const priceForQuantity = (product, quantity) => {
   if (!product?.pricingTiers?.length) return 0;
@@ -198,6 +200,11 @@ const createStripeCheckoutSession = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Shipping details are required' });
     }
 
+    const restrictions = getShippingRestrictions(selectedShippingDetails.country);
+    if (restrictions.restricted) {
+      return res.status(400).json({ success: false, message: `Shipping to ${selectedShippingDetails.country} is restricted. ${restrictions.notes}`});
+    }
+
     const userRow = await User.findById(req.user._id).select('preferredCurrency').lean();
     const currency = userRow?.preferredCurrency || 'USD';
 
@@ -219,13 +226,15 @@ const createStripeCheckoutSession = async (req, res, next) => {
           message: `Quantity for "${item.productName}" is below the minimum (${minQty}).`,
         });
       }
-      const unitPrice = priceForQuantity(p, item.quantity);
-      if (unitPrice <= 0) {
+      const baseUnitPrice = priceForQuantity(p, item.quantity);
+      if (baseUnitPrice <= 0) {
         return res.status(400).json({
           success: false,
           message: `Invalid pricing for "${item.productName}".`,
         });
       }
+      const unitPrice = convertCurrency(baseUnitPrice, 'USD', currency);
+      
       const productRef = item.product._id || item.product;
       orderItems.push({
         product: productRef,
@@ -235,6 +244,18 @@ const createStripeCheckoutSession = async (req, res, next) => {
       });
       totalAmount += item.quantity * unitPrice;
     }
+
+    const totalWeightKg = orderItems.reduce((sum, item) => sum + item.quantity, 0); 
+    const shippingComputation = calculateShippingCost(selectedShippingDetails.country, totalWeightKg, currency);
+    const shippingCost = shippingComputation.cost;
+
+    let taxRate = 0;
+    if (selectedShippingDetails.country === 'United States') taxRate = 0.08; // Example 8% US
+    else if (['United Kingdom', 'Germany', 'France', 'Italy'].includes(selectedShippingDetails.country)) taxRate = 0.20; // Example 20% VAT
+    
+    const taxAmount = Math.round((totalAmount + shippingCost) * taxRate * 100) / 100;
+    
+    totalAmount += shippingCost + taxAmount;
 
     const order = new Order({
       user: req.user._id,
@@ -254,12 +275,38 @@ const createStripeCheckoutSession = async (req, res, next) => {
       price_data: {
         currency: currency.toLowerCase(),
         product_data: {
-          name: `${item.productName} (×${item.quantity})`,
+          name: item.productName,
         },
-        unit_amount: amountToStripeUnit(item.pricePerUnit * item.quantity, currency),
+        unit_amount: amountToStripeUnit(item.pricePerUnit, currency),
       },
-      quantity: 1,
+      quantity: item.quantity,
     }));
+
+    if (shippingCost > 0) {
+      lineItems.push({
+        price_data: {
+          currency: currency.toLowerCase(),
+          product_data: {
+            name: 'Shipping Cost',
+          },
+          unit_amount: amountToStripeUnit(shippingCost, currency),
+        },
+        quantity: 1,
+      });
+    }
+
+    if (taxAmount > 0) {
+      lineItems.push({
+        price_data: {
+          currency: currency.toLowerCase(),
+          product_data: {
+            name: 'Estimated Tax / VAT',
+          },
+          unit_amount: amountToStripeUnit(taxAmount, currency),
+        },
+        quantity: 1,
+      });
+    }
 
     try {
       const session = await stripe.checkout.sessions.create({

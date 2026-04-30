@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import api from "../utils/api";
 import { useAuth } from "../context/authContext";
 import { ArrowLeft, CheckCircle, Package, Loader2, AlertCircle, Maximize2, Tag, Layers, Ruler, Palette, ShoppingCart } from "lucide-react";
+import { formatCurrency } from "../utils/currency";
 
 export default function ProductDetailPage() {
   const { id } = useParams();
@@ -153,7 +154,7 @@ export default function ProductDetailPage() {
                 <div>
                   <span className="block text-[10px] text-fog uppercase tracking-widest font-semibold mb-1">Starting wholesale price</span>
                   <span className="text-sienna text-balance font-medium flex items-baseline gap-1">
-                    <span className="text-2xl">${product.pricingTiers?.[0]?.pricePerUnit?.toFixed(2) || "—"}</span>
+                    <span className="text-2xl">{formatCurrency(product.pricingTiers?.[0]?.pricePerUnit || 0, user?.preferredCurrency, true)}</span>
                     <span className="text-sm text-fog font-normal">/ unit</span>
                   </span>
                 </div>

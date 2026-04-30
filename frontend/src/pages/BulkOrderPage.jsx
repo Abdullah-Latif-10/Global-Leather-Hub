@@ -139,7 +139,7 @@ export default function BulkOrderPage() {
                     <p className="text-xs text-fog mb-3 line-clamp-2">{product.description}</p>
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-medium">
-                        from {formatCurrency(product.pricingTiers?.[0]?.pricePerUnit || 0, user?.preferredCurrency)}
+                        from {formatCurrency(product.pricingTiers?.[0]?.pricePerUnit || 0, user?.preferredCurrency, true)}
                       </span>
                       <button
                         onClick={() => addProduct(product)}
@@ -184,7 +184,7 @@ export default function BulkOrderPage() {
                         <div>
                           <label className="block text-xs text-fog uppercase tracking-wide mb-1">Estimated Price</label>
                           <div className="text-sm font-medium py-2">
-                            {formatCurrency(calculateProductPrice(product) * product.quantity, user?.preferredCurrency)}
+                            {formatCurrency(calculateProductPrice(product) * product.quantity, user?.preferredCurrency, true)}
                           </div>
                         </div>
                       </div>
@@ -232,7 +232,7 @@ export default function BulkOrderPage() {
                     {selectedProducts.map((product) => (
                       <div key={product._id} className="flex justify-between text-sm">
                         <span className="text-fog">{product.name} × {product.quantity}</span>
-                        <span>{formatCurrency(calculateProductPrice(product) * product.quantity, user?.preferredCurrency)}</span>
+                        <span>{formatCurrency(calculateProductPrice(product) * product.quantity, user?.preferredCurrency, true)}</span>
                       </div>
                     ))}
                   </div>
@@ -241,7 +241,7 @@ export default function BulkOrderPage() {
 
                   <div className="flex justify-between font-medium">
                     <span>Estimated Total ({user?.preferredCurrency || 'USD'})</span>
-                    <span className="text-sienna">{formatCurrency(calculateTotal(), user?.preferredCurrency || 'USD')}</span>
+                    <span className="text-sienna">{formatCurrency(calculateTotal(), user?.preferredCurrency, true)}</span>
                   </div>
 
                   <p className="text-xs text-fog/70">

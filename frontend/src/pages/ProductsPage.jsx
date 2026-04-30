@@ -336,7 +336,7 @@ export default function ProductsPage() {
                           <span className="text-[10px] text-fog uppercase tracking-widest font-medium mb-0.5">Price</span>
                           <span className="text-sienna text-balance font-medium flex items-baseline gap-1">
                             <span className="text-sm">from</span>
-                            <span className="text-lg">{formatCurrency(item.pricingTiers?.[0]?.pricePerUnit || 0, user?.preferredCurrency)}</span>
+                            <span className="text-lg">{formatCurrency(item.pricingTiers?.[0]?.pricePerUnit || 0, user?.preferredCurrency, true)}</span>
                             <span className="text-xs text-fog font-normal">/ea</span>
                           </span>
                         </div>
