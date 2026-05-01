@@ -16,6 +16,9 @@ const startServer = async () => {
   try {
     await connectDB();
 
+    const currencyScheduler = require('./src/services/currencyScheduler');
+    currencyScheduler.start();
+
     const server = app.listen(PORT, () => {
       logger.info(`Server running on port ${PORT}`);
       logger.info(`API URL: http://localhost:${PORT}/api`);
@@ -24,6 +27,7 @@ const startServer = async () => {
     // Graceful shutdown
     const gracefulShutdown = (signal) => {
       logger.info(`${signal} received. Shutting down gracefully...`);
+      currencyScheduler.stop();
       server.close(() => {
         logger.info('HTTP server closed.');
         process.exit(0);
