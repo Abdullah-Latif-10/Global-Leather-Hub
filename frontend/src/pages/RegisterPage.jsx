@@ -40,7 +40,8 @@ export default function RegisterPage() {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((p) => ({ ...p, [name]: value }));
-    if (errors[name]) setErrors((p) => ({ ...p, [name]: "" }));
+    if (errors[name] || errors.form)
+      setErrors((p) => ({ ...p, [name]: "", form: "" }));
   };
 
   const validate = () => {
@@ -80,10 +81,15 @@ export default function RegisterPage() {
       if (d?.errors) {
         const fe = {};
         d.errors.forEach((e) => {
-          fe[e.field] = e.message;
+          const field = e.field === "cfTurnstileToken" ? "cf" : e.field;
+          fe[field] = e.message;
         });
         setErrors(fe);
-      } else toast.error(d?.message || "Registration failed.");
+      } else {
+        const message = d?.message || "Registration failed.";
+        setErrors((p) => ({ ...p, form: message }));
+        toast.error(message);
+      }
     } finally {
       setLoading(false);
     }
@@ -482,6 +488,13 @@ export default function RegisterPage() {
                 </p>
               )}
             </div>
+
+            {errors.form && (
+              <p className="text-[12px] text-rust flex items-center gap-1 animate-fade-in">
+                <AlertCircle className="w-3 h-3" />
+                {errors.form}
+              </p>
+            )}
 
             <div className="animate-fade-up stagger-5">
               <button
