@@ -2,7 +2,14 @@ import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Plus, Minus, Calculator, Send, ArrowLeft } from "lucide-react";
 import api from "../utils/api";
-import { formatCurrency } from '../utils/currency';
+import { formatCurrency } from "../utils/currency";
+import {
+  normalizePricingTiers,
+  getActivePricingTier,
+  getNextPricingTier,
+  getPriceForQuantity,
+  getTierLabel,
+} from "../utils/pricingTiers";
 import toast from "react-hot-toast";
 import { useAuth } from "../context/authContext";
 
@@ -16,10 +23,10 @@ export default function BulkOrderPage() {
   useEffect(() => {
     const fetchProducts = async () => {
       try {
-        const { data } = await api.get('/products?limit=100');
+        const { data } = await api.get("/products?limit=100");
         setProducts(data.data.products);
       } catch (err) {
-        toast.error('Failed to load products');
+        toast.error("Failed to load products");
       } finally {
         setLoading(false);
       }
@@ -28,46 +35,90 @@ export default function BulkOrderPage() {
   }, []);
 
   const addProduct = (product) => {
-    if (selectedProducts.find(p => p._id === product._id)) {
-      toast.error('Product already added');
+    if (selectedProducts.find((p) => p._id === product._id)) {
+      toast.error("Product already added");
       return;
     }
-    setSelectedProducts([...selectedProducts, {
-      ...product,
-      quantity: product.moq || 1,
-      customizations: '',
-      notes: ''
-    }]);
+    const initialQty = product.moq || 1;
+    setSelectedProducts([
+      ...selectedProducts,
+      {
+        ...product,
+        quantity: initialQty,
+        quantityInput: String(initialQty),
+        customizations: "",
+        notes: "",
+      },
+    ]);
   };
 
   const updateProduct = (productId, field, value) => {
-    setSelectedProducts(selectedProducts.map(p =>
-      p._id === productId ? { ...p, [field]: value } : p
-    ));
+    setSelectedProducts((prev) =>
+      prev.map((p) => (p._id === productId ? { ...p, [field]: value } : p)),
+    );
+  };
+
+  const updateProductQuantity = (productId, rawValue) => {
+    setSelectedProducts((prev) =>
+      prev.map((p) => {
+        if (p._id !== productId) return p;
+
+        if (rawValue === "") {
+          return { ...p, quantityInput: "", quantity: 0 };
+        }
+
+        if (!/^\d+$/.test(rawValue)) {
+          return p;
+        }
+
+        const normalizedValue = rawValue.replace(/^0+(?=\d)/, "");
+        const nextValue = Number(normalizedValue);
+        return {
+          ...p,
+          quantityInput: normalizedValue,
+          quantity: Number.isFinite(nextValue) ? nextValue : p.quantity,
+        };
+      }),
+    );
+  };
+
+  const handleQuantityBlur = (productId) => {
+    setSelectedProducts((prev) =>
+      prev.map((p) => {
+        if (p._id !== productId) return p;
+
+        if (p.quantityInput !== "") return p;
+
+        const fallbackQty = p.moq || 1;
+        return {
+          ...p,
+          quantityInput: String(fallbackQty),
+          quantity: fallbackQty,
+        };
+      }),
+    );
   };
 
   const removeProduct = (productId) => {
-    setSelectedProducts(selectedProducts.filter(p => p._id !== productId));
+    setSelectedProducts(selectedProducts.filter((p) => p._id !== productId));
   };
 
   const calculateTotal = () => {
     return selectedProducts.reduce((total, product) => {
-      const tier = product.pricingTiers?.find(t =>
-        product.quantity >= t.minQuantity &&
-        (!t.maxQuantity || product.quantity <= t.maxQuantity)
-      );
-      const price = tier?.pricePerUnit || product.pricingTiers?.[0]?.pricePerUnit || 0;
-      return total + (product.quantity * price);
+      const price = getPriceForQuantity(product, product.quantity);
+      return total + product.quantity * price;
     }, 0);
   };
 
   const handleSubmit = async () => {
     if (selectedProducts.length === 0) {
-      toast.error('Please add at least one product');
+      toast.error("Please add at least one product");
       return;
     }
 
-    const invalidProducts = selectedProducts.filter(p => p.quantity < (p.moq || 1));
+    const invalidProducts = selectedProducts.filter(
+      (p) => p.quantity < (p.moq || 1),
+    );
     if (invalidProducts.length > 0) {
       toast.error(`Some products are below minimum order quantity`);
       return;
@@ -76,22 +127,24 @@ export default function BulkOrderPage() {
     setSubmitting(true);
     try {
       const quotationData = {
-        products: selectedProducts.map(p => ({
+        products: selectedProducts.map((p) => ({
           productId: p._id,
           name: p.name,
           quantity: p.quantity,
           customizations: p.customizations,
-          notes: p.notes
+          notes: p.notes,
         })),
         totalEstimatedValue: calculateTotal(),
-        currency: user?.preferredCurrency || 'USD'
+        currency: user?.preferredCurrency || "USD",
       };
 
-      await api.post('/bulk-orders', quotationData);
-      toast.success('Bulk order quotation request submitted!');
+      await api.post("/bulk-orders", quotationData);
+      toast.success("Bulk order quotation request submitted!");
       setSelectedProducts([]);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to submit quotation request');
+      toast.error(
+        err.response?.data?.message || "Failed to submit quotation request",
+      );
     } finally {
       setSubmitting(false);
     }
@@ -108,38 +161,57 @@ export default function BulkOrderPage() {
   return (
     <div className="min-h-screen bg-canvas text-espresso pt-24 pb-16">
       <div className="max-w-7xl mx-auto px-6 lg:px-10">
-
         {/* Header */}
         <div className="mb-8">
           <Link to="/products" className="btn-ghost mb-6 inline-flex">
             <ArrowLeft className="w-4 h-4" /> Back to Catalog
           </Link>
-          <h1 className="text-3xl md:text-4xl mb-4 text-espresso" style={{ fontFamily: '"Playfair Display", serif', fontWeight: 400 }}>
+          <h1
+            className="text-3xl md:text-4xl mb-4 text-espresso"
+            style={{ fontFamily: '"Playfair Display", serif', fontWeight: 400 }}
+          >
             Bulk Order Quotation
           </h1>
           <p className="text-fog text-lg max-w-2xl">
-            Request customized quotes for large orders with special pricing, customizations, and bulk discounts.
-            Prices and currency follow your profile preference for international wholesale ordering.
+            Request customized quotes for large orders with special pricing,
+            customizations, and bulk discounts. Prices and currency follow your
+            profile preference for international wholesale ordering.
           </p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
           {/* Product Selection */}
           <div className="lg:col-span-2 space-y-6">
             <div className="card">
-              <h3 className="text-xl mb-4" style={{ fontFamily: '"Playfair Display", serif' }}>Available Products</h3>
+              <h3
+                className="text-xl mb-4"
+                style={{ fontFamily: '"Playfair Display", serif' }}
+              >
+                Available Products
+              </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto">
                 {products.map((product) => (
-                  <div key={product._id} className="border border-border rounded-xl p-4 hover:bg-linen/30 transition-colors">
+                  <div
+                    key={product._id}
+                    className="border border-border rounded-xl p-4 hover:bg-linen/30 transition-colors"
+                  >
                     <div className="flex justify-between items-start mb-2">
                       <h4 className="font-medium text-sm">{product.name}</h4>
-                      <span className="badge-tan text-[10px]">MOQ {product.moq}</span>
+                      <span className="badge-tan text-[10px]">
+                        MOQ {product.moq}
+                      </span>
                     </div>
-                    <p className="text-xs text-fog mb-3 line-clamp-2">{product.description}</p>
+                    <p className="text-xs text-fog mb-3 line-clamp-2">
+                      {product.description}
+                    </p>
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-medium">
-                        from {formatCurrency(product.pricingTiers?.[0]?.pricePerUnit || 0, user?.preferredCurrency, true)}
+                        from{" "}
+                        {formatCurrency(
+                          product.pricingTiers?.[0]?.price || 0,
+                          user?.preferredCurrency,
+                          true,
+                        )}
                       </span>
                       <button
                         onClick={() => addProduct(product)}
@@ -156,61 +228,178 @@ export default function BulkOrderPage() {
             {/* Selected Products */}
             {selectedProducts.length > 0 && (
               <div className="card">
-                <h3 className="text-xl mb-4" style={{ fontFamily: '"Playfair Display", serif' }}>Selected Products</h3>
+                <h3
+                  className="text-xl mb-4"
+                  style={{ fontFamily: '"Playfair Display", serif' }}
+                >
+                  Selected Products
+                </h3>
                 <div className="space-y-4">
-                  {selectedProducts.map((product) => (
-                    <div key={product._id} className="border border-border rounded-xl p-4">
-                      <div className="flex justify-between items-start mb-3">
-                        <h4 className="font-medium">{product.name}</h4>
-                        <button
-                          onClick={() => removeProduct(product._id)}
-                          className="text-rust hover:text-red-600"
-                        >
-                          <Minus className="w-4 h-4" />
-                        </button>
-                      </div>
+                  {selectedProducts.map((product) => {
+                    const tiers = normalizePricingTiers(
+                      product.pricingTiers || [],
+                    );
+                    const activeTier = getActivePricingTier(
+                      tiers,
+                      product.quantity,
+                    );
+                    const nextTier = getNextPricingTier(
+                      tiers,
+                      product.quantity,
+                    );
+                    const basePrice = tiers[0]?.price || 0;
+                    const unitPrice = activeTier?.price ?? basePrice;
+                    const savingsPercent =
+                      basePrice > 0
+                        ? Math.max(
+                            0,
+                            Math.round(
+                              ((basePrice - unitPrice) / basePrice) * 100,
+                            ),
+                          )
+                        : 0;
+                    const nextDelta = nextTier
+                      ? Math.max(
+                          0,
+                          nextTier.minQuantity - Math.max(1, product.quantity),
+                        )
+                      : 0;
 
-                      <div className="grid grid-cols-2 gap-4 mb-3">
-                        <div>
-                          <label className="block text-xs text-fog uppercase tracking-wide mb-1">Quantity</label>
-                          <input
-                            type="number"
-                            min={product.moq || 1}
-                            value={product.quantity}
-                            onChange={(e) => updateProduct(product._id, 'quantity', Number(e.target.value))}
-                            className="field text-sm"
-                          />
+                    return (
+                      <div
+                        key={product._id}
+                        className="border border-border rounded-xl p-4"
+                      >
+                        <div className="flex justify-between items-start mb-3">
+                          <h4 className="font-medium">{product.name}</h4>
+                          <button
+                            onClick={() => removeProduct(product._id)}
+                            className="text-rust hover:text-red-600"
+                          >
+                            <Minus className="w-4 h-4" />
+                          </button>
                         </div>
-                        <div>
-                          <label className="block text-xs text-fog uppercase tracking-wide mb-1">Estimated Price</label>
-                          <div className="text-sm font-medium py-2">
-                            {formatCurrency(calculateProductPrice(product) * product.quantity, user?.preferredCurrency, true)}
+
+                        <div className="grid grid-cols-2 gap-4 mb-3">
+                          <div>
+                            <label className="block text-xs text-fog uppercase tracking-wide mb-1">
+                              Quantity
+                            </label>
+                            <input
+                              type="number"
+                              min={product.moq || 1}
+                              value={
+                                product.quantityInput ??
+                                String(product.quantity)
+                              }
+                              onChange={(e) =>
+                                updateProductQuantity(
+                                  product._id,
+                                  e.target.value,
+                                )
+                              }
+                              onBlur={() => handleQuantityBlur(product._id)}
+                              className="field text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-fog uppercase tracking-wide mb-1">
+                              Estimated Price
+                            </label>
+                            <div className="text-sm font-medium py-2">
+                              {formatCurrency(
+                                calculateProductPrice(product) *
+                                  product.quantity,
+                                user?.preferredCurrency,
+                                true,
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {tiers.length > 0 && (
+                          <div className="rounded-lg border border-border/60 bg-linen/30 px-3 py-2.5 text-xs text-fog mb-3">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-espresso font-medium">
+                                Active: {getTierLabel(activeTier)}
+                              </span>
+                              <span>
+                                {formatCurrency(
+                                  unitPrice,
+                                  user?.preferredCurrency,
+                                  true,
+                                )}
+                                /unit
+                              </span>
+                              {savingsPercent > 0 && (
+                                <span className="text-sage font-medium">
+                                  Save {savingsPercent}%
+                                </span>
+                              )}
+                              {nextTier && (
+                                <span className="badge-tan text-[10px]">
+                                  Next: {getTierLabel(nextTier)}
+                                </span>
+                              )}
+                            </div>
+                            {nextTier ? (
+                              <p className="mt-1">
+                                Add {nextDelta} more item
+                                {nextDelta === 1 ? "" : "s"} to unlock{" "}
+                                {formatCurrency(
+                                  nextTier.price,
+                                  user?.preferredCurrency,
+                                  true,
+                                )}
+                                /unit.
+                              </p>
+                            ) : (
+                              <p className="mt-1 text-sage">
+                                Best tier unlocked.
+                              </p>
+                            )}
+                          </div>
+                        )}
+
+                        <div className="space-y-3">
+                          <div>
+                            <label className="block text-xs text-fog uppercase tracking-wide mb-1">
+                              Customizations
+                            </label>
+                            <textarea
+                              value={product.customizations}
+                              onChange={(e) =>
+                                updateProduct(
+                                  product._id,
+                                  "customizations",
+                                  e.target.value,
+                                )
+                              }
+                              placeholder="e.g. Custom colors, logos, packaging..."
+                              className="field text-sm h-16"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs text-fog uppercase tracking-wide mb-1">
+                              Additional Notes
+                            </label>
+                            <textarea
+                              value={product.notes}
+                              onChange={(e) =>
+                                updateProduct(
+                                  product._id,
+                                  "notes",
+                                  e.target.value,
+                                )
+                              }
+                              placeholder="Special requirements or questions..."
+                              className="field text-sm h-16"
+                            />
                           </div>
                         </div>
                       </div>
-
-                      <div className="space-y-3">
-                        <div>
-                          <label className="block text-xs text-fog uppercase tracking-wide mb-1">Customizations</label>
-                          <textarea
-                            value={product.customizations}
-                            onChange={(e) => updateProduct(product._id, 'customizations', e.target.value)}
-                            placeholder="e.g. Custom colors, logos, packaging..."
-                            className="field text-sm h-16"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs text-fog uppercase tracking-wide mb-1">Additional Notes</label>
-                          <textarea
-                            value={product.notes}
-                            onChange={(e) => updateProduct(product._id, 'notes', e.target.value)}
-                            placeholder="Special requirements or questions..."
-                            className="field text-sm h-16"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -219,7 +408,10 @@ export default function BulkOrderPage() {
           {/* Summary & Submit */}
           <div className="space-y-6">
             <div className="card sticky top-24">
-              <h3 className="text-xl mb-4 flex items-center gap-2" style={{ fontFamily: '"Playfair Display", serif' }}>
+              <h3
+                className="text-xl mb-4 flex items-center gap-2"
+                style={{ fontFamily: '"Playfair Display", serif' }}
+              >
                 <Calculator className="w-5 h-5" />
                 Quotation Summary
               </h3>
@@ -230,9 +422,20 @@ export default function BulkOrderPage() {
                 <div className="space-y-4">
                   <div className="space-y-2">
                     {selectedProducts.map((product) => (
-                      <div key={product._id} className="flex justify-between text-sm">
-                        <span className="text-fog">{product.name} × {product.quantity}</span>
-                        <span>{formatCurrency(calculateProductPrice(product) * product.quantity, user?.preferredCurrency, true)}</span>
+                      <div
+                        key={product._id}
+                        className="flex justify-between text-sm"
+                      >
+                        <span className="text-fog">
+                          {product.name} × {product.quantity}
+                        </span>
+                        <span>
+                          {formatCurrency(
+                            calculateProductPrice(product) * product.quantity,
+                            user?.preferredCurrency,
+                            true,
+                          )}
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -240,12 +443,21 @@ export default function BulkOrderPage() {
                   <div className="rule"></div>
 
                   <div className="flex justify-between font-medium">
-                    <span>Estimated Total ({user?.preferredCurrency || 'USD'})</span>
-                    <span className="text-sienna">{formatCurrency(calculateTotal(), user?.preferredCurrency, true)}</span>
+                    <span>
+                      Estimated Total ({user?.preferredCurrency || "USD"})
+                    </span>
+                    <span className="text-sienna">
+                      {formatCurrency(
+                        calculateTotal(),
+                        user?.preferredCurrency,
+                        true,
+                      )}
+                    </span>
                   </div>
 
                   <p className="text-xs text-fog/70">
-                    This is an estimate. Final pricing will be provided in your quotation.
+                    This is an estimate. Final pricing will be provided in your
+                    quotation.
                   </p>
 
                   <button
@@ -253,7 +465,9 @@ export default function BulkOrderPage() {
                     disabled={submitting || selectedProducts.length === 0}
                     className="btn-primary w-full justify-center py-3"
                   >
-                    {submitting ? 'Submitting...' : (
+                    {submitting ? (
+                      "Submitting..."
+                    ) : (
                       <>
                         <Send className="w-4 h-4 mr-2" />
                         Request Quotation
@@ -283,9 +497,5 @@ export default function BulkOrderPage() {
 
 // Helper function to calculate product price based on quantity tier
 function calculateProductPrice(product) {
-  const tier = product.pricingTiers?.find(t =>
-    product.quantity >= t.minQuantity &&
-    (!t.maxQuantity || product.quantity <= t.maxQuantity)
-  );
-  return tier?.pricePerUnit || product.pricingTiers?.[0]?.pricePerUnit || 0;
+  return getPriceForQuantity(product, product.quantity);
 }
