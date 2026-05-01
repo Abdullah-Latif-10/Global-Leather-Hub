@@ -5,6 +5,7 @@ const User = require('../models/User');
 const BulkOrder = require('../models/BulkOrder');
 const { uploadBufferToCloudinary, deleteFromCloudinary } = require('../utils/cloudinary');
 const logger = require('../utils/logger');
+const { normalizePricingTiers } = require('../utils/pricingTiers');
 const {
   removeProductFromAllCarts,
   reconcileCartsForProduct,
@@ -184,7 +185,13 @@ const createProduct = async (req, res, next) => {
   try {
     const { name, description, category, moq, status, material, fit } = req.body;
 
-    let pricingTiers = parseJsonField(req.body.pricingTiers);
+    const pricingPayload = parseJsonField(req.body.pricingTiers);
+    const { tiers: pricingTiers, error: pricingError } = normalizePricingTiers(pricingPayload, {
+      basePrice: req.body.basePrice,
+    });
+    if (pricingError) {
+      return res.status(400).json({ success: false, message: pricingError });
+    }
     const specifications = parseJsonField(req.body.specifications) || [];
     const availableSizes = parseJsonField(req.body.availableSizes) || [];
     const availableColors = parseJsonField(req.body.availableColors) || [];
@@ -264,8 +271,15 @@ const updateProduct = async (req, res, next) => {
     if (material !== undefined) product.material = material;
     if (fit !== undefined) product.fit = fit;
 
-    if (req.body.pricingTiers) {
-      product.pricingTiers = parseJsonField(req.body.pricingTiers) || product.pricingTiers;
+    if (req.body.pricingTiers !== undefined) {
+      const pricingPayload = parseJsonField(req.body.pricingTiers);
+      const { tiers: nextTiers, error: pricingError } = normalizePricingTiers(pricingPayload, {
+        basePrice: req.body.basePrice,
+      });
+      if (pricingError) {
+        return res.status(400).json({ success: false, message: pricingError });
+      }
+      if (nextTiers) product.pricingTiers = nextTiers;
     }
     const specs = parseJsonField(req.body.specifications);
     if (specs !== undefined) product.specifications = specs;
