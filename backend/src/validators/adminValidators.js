@@ -1,4 +1,5 @@
 const { body, param, query } = require('express-validator');
+const { parsePricingTiersPayload, normalizePricingTiers } = require('../utils/pricingTiers');
 
 const productValidator = [
   body('name')
@@ -36,33 +37,17 @@ const productValidator = [
   body('pricingTiers')
     .notEmpty()
     .withMessage('At least one pricing tier is required')
-    .custom((value) => {
-      let tiers;
-      if (typeof value === 'string') {
-        try {
-          tiers = JSON.parse(value);
-        } catch {
-          throw new Error('Pricing tiers must be valid JSON');
-        }
-      } else {
-        tiers = value;
+    .custom((value, { req }) => {
+      const { tiers, error } = parsePricingTiersPayload(value);
+      if (error) {
+        throw new Error(error);
       }
 
-      if (!Array.isArray(tiers) || tiers.length === 0) {
-        throw new Error('At least one pricing tier is required');
-      }
-
-      for (let i = 0; i < tiers.length; i++) {
-        const tier = tiers[i];
-        if (!tier.minQuantity || tier.minQuantity < 1) {
-          throw new Error(`Tier ${i + 1}: minQuantity must be at least 1`);
-        }
-        if (!tier.pricePerUnit || tier.pricePerUnit <= 0) {
-          throw new Error(`Tier ${i + 1}: pricePerUnit must be greater than 0`);
-        }
-        if (tier.maxQuantity !== null && tier.maxQuantity !== undefined && tier.maxQuantity < tier.minQuantity) {
-          throw new Error(`Tier ${i + 1}: maxQuantity cannot be less than minQuantity`);
-        }
+      const { error: normalizeError } = normalizePricingTiers(tiers, {
+        basePrice: req?.body?.basePrice,
+      });
+      if (normalizeError) {
+        throw new Error(normalizeError);
       }
       return true;
     }),
@@ -103,33 +88,17 @@ const updateProductValidator = [
 
   body('pricingTiers')
     .optional()
-    .custom((value) => {
-      let tiers;
-      if (typeof value === 'string') {
-        try {
-          tiers = JSON.parse(value);
-        } catch {
-          throw new Error('Pricing tiers must be valid JSON');
-        }
-      } else {
-        tiers = value;
+    .custom((value, { req }) => {
+      const { tiers, error } = parsePricingTiersPayload(value);
+      if (error) {
+        throw new Error(error);
       }
 
-      if (!Array.isArray(tiers) || tiers.length === 0) {
-        throw new Error('At least one pricing tier is required');
-      }
-
-      for (let i = 0; i < tiers.length; i++) {
-        const tier = tiers[i];
-        if (!tier.minQuantity || tier.minQuantity < 1) {
-          throw new Error(`Tier ${i + 1}: minQuantity must be at least 1`);
-        }
-        if (!tier.pricePerUnit || tier.pricePerUnit <= 0) {
-          throw new Error(`Tier ${i + 1}: pricePerUnit must be greater than 0`);
-        }
-        if (tier.maxQuantity !== null && tier.maxQuantity !== undefined && tier.maxQuantity < tier.minQuantity) {
-          throw new Error(`Tier ${i + 1}: maxQuantity cannot be less than minQuantity`);
-        }
+      const { error: normalizeError } = normalizePricingTiers(tiers, {
+        basePrice: req?.body?.basePrice,
+      });
+      if (normalizeError) {
+        throw new Error(normalizeError);
       }
       return true;
     }),
