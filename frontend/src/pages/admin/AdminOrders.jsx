@@ -353,12 +353,12 @@ export default function AdminOrders() {
                               </p>
                               <p className="text-xs text-fog">
                                 Qty: {item.quantity} × $
-                                {item.pricePerUnit?.toFixed(2)}
+                                {item.price?.toFixed(2)}
                               </p>
                             </div>
                             <p className="text-espresso font-medium">
                               $
-                              {(item.quantity * item.pricePerUnit).toFixed(2)}
+                              {(item.quantity * item.price).toFixed(2)}
                             </p>
                           </div>
                         ))}
