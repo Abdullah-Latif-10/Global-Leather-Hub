@@ -353,7 +353,7 @@ export default function AdminCustomers() {
                               <span className="text-fog">{item.quantity}x</span>
                               <span className="text-espresso font-medium">{item.productName || item.product?.name || "Unknown Product"}</span>
                             </div>
-                            <span className="text-fog">${(item.quantity * item.pricePerUnit).toFixed(2)}</span>
+                            <span className="text-fog">${(item.quantity * item.price).toFixed(2)}</span>
                           </div>
                         ))}
                       </div>
