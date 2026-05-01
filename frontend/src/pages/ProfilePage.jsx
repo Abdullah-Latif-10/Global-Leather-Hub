@@ -25,6 +25,7 @@ import toast from "react-hot-toast";
 import { useAuth } from "../context/authContext";
 import { useNavigate } from "react-router-dom";
 import api from "../utils/api";
+import { CURRENCY_NAMES, CURRENCY_SYMBOLS } from "../utils/currency";
 
 const requirements = [
   { label: "8+ characters", test: (p) => p.length >= 8 },
@@ -743,12 +744,11 @@ export default function ProfilePage() {
                   onChange={(e) => setPreferredCurrency(e.target.value)}
                   className="field"
                 >
-                  <option value="USD">USD - US Dollar</option>
-                  <option value="EUR">EUR - Euro</option>
-                  <option value="GBP">GBP - British Pound</option>
-                  <option value="AUD">AUD - Australian Dollar</option>
-                  <option value="CAD">CAD - Canadian Dollar</option>
-                  <option value="CNY">CNY - Chinese Yuan</option>
+                  {Object.entries(CURRENCY_NAMES).map(([code, name]) => (
+                    <option key={code} value={code}>
+                      {code} - {name} ({CURRENCY_SYMBOLS[code]})
+                    </option>
+                  ))}
                 </select>
                 <button
                   onClick={handleCurrencyUpdate}
