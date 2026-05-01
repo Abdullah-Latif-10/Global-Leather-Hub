@@ -86,7 +86,7 @@ const OrderDetailPage = () => {
 
   const statusSteps = getStatusSteps(order.status);
   const lineSubtotal = order.items.reduce(
-    (sum, item) => sum + item.quantity * (item.pricePerUnit ?? item.price ?? 0),
+    (sum, item) => sum + item.quantity * (item.price ?? 0),
     0
   );
   const shipping = order.shippingCost ?? 0;
@@ -218,11 +218,11 @@ const OrderDetailPage = () => {
                     </Link>
                     <p className="text-sm text-gray-600">{item.product?.description}</p>
                     <p className="text-sm text-gray-600">
-                      Quantity: {item.quantity} × {formatCurrency(item.pricePerUnit ?? item.price, order.currency || user?.preferredCurrency)}
+                      Quantity: {item.quantity} × {formatCurrency(item.price, order.currency || user?.preferredCurrency)}
                     </p>
                   </div>
                   <div className="text-sm font-medium text-gray-900">
-                    {formatCurrency((item.quantity * (item.pricePerUnit ?? item.price ?? 0)), order.currency || user?.preferredCurrency)}
+                    {formatCurrency((item.quantity * (item.price ?? 0)), order.currency || user?.preferredCurrency)}
                   </div>
                 </div>
               ))}
