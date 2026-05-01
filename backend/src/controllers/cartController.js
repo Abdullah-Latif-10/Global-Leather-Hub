@@ -5,27 +5,36 @@ const User = require('../models/User');
 const { getStripe, amountToStripeUnit } = require('../utils/stripeClient');
 const { calculateShippingCost, getShippingRestrictions } = require('../utils/shipping');
 const { convertCurrency } = require('../utils/currency');
+const { getPriceForQuantity } = require('../utils/pricingTiers');
 
-const priceForQuantity = (product, quantity) => {
-  if (!product?.pricingTiers?.length) return 0;
-  const tier = product.pricingTiers.find(
-    (t) => quantity >= t.minQuantity && (t.maxQuantity == null || quantity <= t.maxQuantity)
-  );
-  return (tier || product.pricingTiers[0]).pricePerUnit;
+// Helper to format cart response
+const formatCartResponse = (cart, currency) => {
+  const currencyService = require('../services/CurrencyService');
+  let totalAmount = 0;
+  const items = cart ? cart.items.map(item => {
+    const obj = item.toObject ? item.toObject() : item;
+    const convertedPrice = currencyService.convert(obj.price_usd, currency);
+    totalAmount += obj.quantity * convertedPrice;
+    return {
+      ...obj,
+      price: convertedPrice,
+      currency,
+    };
+  }) : [];
+  return { items, totalAmount, currency };
 };
 
 // GET /api/cart
 const getCart = async (req, res, next) => {
   try {
     const cart = await Cart.findOne({ user: req.user._id }).populate('items.product', 'name pricingTiers moq status');
-    const totalAmount = cart ? cart.items.reduce((sum, item) => sum + item.quantity * item.pricePerUnit, 0) : 0;
+    
+    const userRow = await User.findById(req.user._id).select('preferredCurrency').lean();
+    const currency = userRow?.preferredCurrency || 'USD';
 
     res.status(200).json({
       success: true,
-      data: {
-        items: cart?.items || [],
-        totalAmount,
-      },
+      data: formatCartResponse(cart, currency),
     });
   } catch (error) {
     next(error);
@@ -70,26 +79,29 @@ const addToCart = async (req, res, next) => {
       if (cart.items[existingIndex].quantity < minQty) {
         cart.items[existingIndex].quantity = minQty;
       }
+      cart.items[existingIndex].price_usd = getPriceForQuantity(
+        product,
+        cart.items[existingIndex].quantity
+      );
     } else {
+      const unitPrice = getPriceForQuantity(product, qty);
       cart.items.push({
         product: product._id,
         productName: product.name,
         quantity: qty,
-        pricePerUnit: product.pricingTiers?.[0]?.pricePerUnit ?? 0,
+        price_usd: unitPrice,
       });
     }
 
     await cart.save();
 
-    const totalAmount = cart.items.reduce((sum, item) => sum + item.quantity * item.pricePerUnit, 0);
+    const userRow = await User.findById(req.user._id).select('preferredCurrency').lean();
+    const currency = userRow?.preferredCurrency || 'USD';
 
     res.status(200).json({
       success: true,
       message: 'Item added to cart',
-      data: {
-        items: cart.items,
-        totalAmount,
-      },
+      data: formatCartResponse(cart, currency),
     });
   } catch (error) {
     next(error);
@@ -131,19 +143,18 @@ const updateCartItem = async (req, res, next) => {
       cart.items.splice(itemIndex, 1);
     } else {
       cart.items[itemIndex].quantity = quantity;
+      cart.items[itemIndex].price_usd = getPriceForQuantity(product, quantity);
     }
 
     await cart.save();
 
-    const totalAmount = cart.items.reduce((sum, item) => sum + item.quantity * item.pricePerUnit, 0);
+    const userRow = await User.findById(req.user._id).select('preferredCurrency').lean();
+    const currency = userRow?.preferredCurrency || 'USD';
 
     res.status(200).json({
       success: true,
       message: 'Cart updated',
-      data: {
-        items: cart.items,
-        totalAmount,
-      },
+      data: formatCartResponse(cart, currency),
     });
   } catch (error) {
     next(error);
@@ -207,9 +218,11 @@ const createStripeCheckoutSession = async (req, res, next) => {
 
     const userRow = await User.findById(req.user._id).select('preferredCurrency').lean();
     const currency = userRow?.preferredCurrency || 'USD';
+    const currencyService = require('../services/CurrencyService');
 
     const orderItems = [];
-    let totalAmount = 0;
+    let totalAmountUsd = 0;
+    let totalAmountConverted = 0;
 
     for (const item of cart.items) {
       const p = item.product;
@@ -226,44 +239,48 @@ const createStripeCheckoutSession = async (req, res, next) => {
           message: `Quantity for "${item.productName}" is below the minimum (${minQty}).`,
         });
       }
-      const baseUnitPrice = priceForQuantity(p, item.quantity);
-      if (baseUnitPrice <= 0) {
+      const baseUnitPriceUsd = getPriceForQuantity(p, item.quantity);
+      if (baseUnitPriceUsd <= 0) {
         return res.status(400).json({
           success: false,
           message: `Invalid pricing for "${item.productName}".`,
         });
       }
-      const unitPrice = convertCurrency(baseUnitPrice, 'USD', currency);
+      const unitPriceConverted = currencyService.convert(baseUnitPriceUsd, currency);
       
       const productRef = item.product._id || item.product;
       orderItems.push({
         product: productRef,
         productName: p.name,
         quantity: item.quantity,
-        pricePerUnit: unitPrice,
+        price_usd: baseUnitPriceUsd,
       });
-      totalAmount += item.quantity * unitPrice;
+      totalAmountUsd += item.quantity * baseUnitPriceUsd;
+      totalAmountConverted += item.quantity * unitPriceConverted;
     }
 
     const totalWeightKg = orderItems.reduce((sum, item) => sum + item.quantity, 0); 
-    const shippingComputation = calculateShippingCost(selectedShippingDetails.country, totalWeightKg, currency);
-    const shippingCost = shippingComputation.cost;
+    const shippingComputationUsd = calculateShippingCost(selectedShippingDetails.country, totalWeightKg, 'USD');
+    const shippingCostUsd = shippingComputationUsd.cost;
+    const shippingCostConverted = currencyService.convert(shippingCostUsd, currency);
 
     let taxRate = 0;
     if (selectedShippingDetails.country === 'United States') taxRate = 0.08; // Example 8% US
     else if (['United Kingdom', 'Germany', 'France', 'Italy'].includes(selectedShippingDetails.country)) taxRate = 0.20; // Example 20% VAT
     
-    const taxAmount = Math.round((totalAmount + shippingCost) * taxRate * 100) / 100;
+    const taxAmountUsd = Math.round((totalAmountUsd + shippingCostUsd) * taxRate * 100) / 100;
+    const taxAmountConverted = currencyService.convert(taxAmountUsd, currency);
     
-    totalAmount += shippingCost + taxAmount;
+    totalAmountUsd += shippingCostUsd + taxAmountUsd;
+    totalAmountConverted += shippingCostConverted + taxAmountConverted;
 
     const order = new Order({
       user: req.user._id,
       items: orderItems,
       shippingDetails: selectedShippingDetails,
-      totalAmount,
+      totalAmount: totalAmountUsd, // stored in USD
       notes,
-      currency,
+      currency, // The currency the user selected to view the order
       paymentStatus: 'unpaid',
       paymentMethod: 'stripe',
     });
@@ -271,38 +288,41 @@ const createStripeCheckoutSession = async (req, res, next) => {
     await order.save();
 
     const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
-    const lineItems = orderItems.map((item) => ({
-      price_data: {
-        currency: currency.toLowerCase(),
-        product_data: {
-          name: item.productName,
+    const lineItems = orderItems.map((item, index) => {
+      const convertedPrice = currencyService.convert(item.price_usd, currency);
+      return {
+        price_data: {
+          currency: currency.toLowerCase(),
+          product_data: {
+            name: item.productName,
+          },
+          unit_amount: amountToStripeUnit(convertedPrice, currency),
         },
-        unit_amount: amountToStripeUnit(item.pricePerUnit, currency),
-      },
-      quantity: item.quantity,
-    }));
+        quantity: item.quantity,
+      };
+    });
 
-    if (shippingCost > 0) {
+    if (shippingCostConverted > 0) {
       lineItems.push({
         price_data: {
           currency: currency.toLowerCase(),
           product_data: {
             name: 'Shipping Cost',
           },
-          unit_amount: amountToStripeUnit(shippingCost, currency),
+          unit_amount: amountToStripeUnit(shippingCostConverted, currency),
         },
         quantity: 1,
       });
     }
 
-    if (taxAmount > 0) {
+    if (taxAmountConverted > 0) {
       lineItems.push({
         price_data: {
           currency: currency.toLowerCase(),
           product_data: {
             name: 'Estimated Tax / VAT',
           },
-          unit_amount: amountToStripeUnit(taxAmount, currency),
+          unit_amount: amountToStripeUnit(taxAmountConverted, currency),
         },
         quantity: 1,
       });
@@ -361,12 +381,13 @@ const removeFromCart = async (req, res, next) => {
     cart.items = cart.items.filter((item) => item.product.toString() !== productId);
     await cart.save();
 
-    const totalAmount = cart.items.reduce((sum, item) => sum + item.quantity * item.pricePerUnit, 0);
+    const userRow = await User.findById(req.user._id).select('preferredCurrency').lean();
+    const currency = userRow?.preferredCurrency || 'USD';
 
     res.status(200).json({
       success: true,
       message: 'Item removed from cart',
-      data: { items: cart.items, totalAmount },
+      data: formatCartResponse(cart, currency),
     });
   } catch (error) {
     next(error);
@@ -382,10 +403,13 @@ const clearCart = async (req, res, next) => {
       { new: true, upsert: true }
     );
 
+    const userRow = await User.findById(req.user._id).select('preferredCurrency').lean();
+    const currency = userRow?.preferredCurrency || 'USD';
+
     res.status(200).json({
       success: true,
       message: 'Cart cleared',
-      data: { items: cart.items, totalAmount: 0 },
+      data: formatCartResponse(cart, currency),
     });
   } catch (error) {
     next(error);
