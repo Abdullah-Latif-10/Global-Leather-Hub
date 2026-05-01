@@ -1,4 +1,18 @@
 const Product = require('../models/Product');
+const currencyService = require('../services/CurrencyService');
+
+const formatProductCurrency = (product, currency) => {
+  if (!product) return product;
+  const p = product.toObject ? product.toObject() : { ...product };
+  if (p.pricingTiers && Array.isArray(p.pricingTiers)) {
+    p.pricingTiers = p.pricingTiers.map(tier => ({
+      ...tier,
+      price: currencyService.convert(tier.price_usd, currency)
+    }));
+  }
+  p.currency = currency;
+  return p;
+};
 
 // GET /api/products public listing of active products
 const getProducts = async (req, res, next) => {
@@ -19,22 +33,24 @@ const getProducts = async (req, res, next) => {
     }
 
     if (req.query.minPrice || req.query.maxPrice) {
-      filter['pricingTiers.pricePerUnit'] = {};
+      filter['pricingTiers.price_usd'] = {};
+      const currency = req.user?.preferredCurrency || 'USD';
       if (req.query.minPrice) {
-        filter['pricingTiers.pricePerUnit'].$gte = parseFloat(req.query.minPrice);
+        // Convert local currency back to USD for filtering
+        filter['pricingTiers.price_usd'].$gte = parseFloat(req.query.minPrice) / (currencyService.rates[currency] || 1);
       }
       if (req.query.maxPrice) {
-        filter['pricingTiers.pricePerUnit'].$lte = parseFloat(req.query.maxPrice);
+        filter['pricingTiers.price_usd'].$lte = parseFloat(req.query.maxPrice) / (currencyService.rates[currency] || 1);
       }
     }
 
     const sortOptions = {};
     switch (req.query.sort) {
       case 'price-asc':
-        sortOptions['pricingTiers.0.pricePerUnit'] = 1;
+        sortOptions['pricingTiers.0.price_usd'] = 1;
         break;
       case 'price-desc':
-        sortOptions['pricingTiers.0.pricePerUnit'] = -1;
+        sortOptions['pricingTiers.0.price_usd'] = -1;
         break;
       case 'name-asc':
         sortOptions.name = 1;
@@ -46,10 +62,13 @@ const getProducts = async (req, res, next) => {
         sortOptions.createdAt = -1;
     }
 
-    const [products, total] = await Promise.all([
+    const [productsRaw, total] = await Promise.all([
       Product.find(filter).sort(sortOptions).skip(skip).limit(limit).lean(),
       Product.countDocuments(filter),
     ]);
+
+    const currency = req.user?.preferredCurrency || 'USD';
+    const products = productsRaw.map(p => formatProductCurrency(p, currency));
 
     res.status(200).json({
       success: true,
@@ -71,17 +90,20 @@ const getProducts = async (req, res, next) => {
 // GET /api/products/:id — single active product
 const getProductById = async (req, res, next) => {
   try {
-    const product = await Product.findOne({
+    const productRaw = await Product.findOne({
       _id: req.params.id,
       status: 'active',
     }).lean();
 
-    if (!product) {
+    if (!productRaw) {
       return res.status(404).json({
         success: false,
         message: 'Product not found.',
       });
     }
+
+    const currency = req.user?.preferredCurrency || 'USD';
+    const product = formatProductCurrency(productRaw, currency);
 
     res.status(200).json({
       success: true,
