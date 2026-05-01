@@ -60,7 +60,7 @@ const userSchema = new mongoose.Schema(
     lastLogin: { type: Date },
     preferredCurrency: {
       type: String,
-      enum: ['USD', 'EUR', 'GBP', 'AUD', 'CAD', 'CNY'],
+      enum: ['USD', 'EUR', 'GBP', 'AUD', 'CAD', 'CNY', 'PKR', 'AED'],
       default: 'USD',
     },
     shippingProfiles: [
