@@ -3,9 +3,9 @@ const Product = require('../models/Product');
 const Order = require('../models/Order');
 const User = require('../models/User');
 const { getStripe, amountToStripeUnit } = require('../utils/stripeClient');
-const { calculateShippingCost, getShippingRestrictions } = require('../utils/shipping');
 const { convertCurrency } = require('../utils/currency');
 const { getPriceForQuantity } = require('../utils/pricingTiers');
+const { validateShippingAddress } = require('../utils/shippingValidation');
 
 const CART_PRODUCT_FIELDS = 'name pricingTiers moq status images';
 
@@ -223,7 +223,8 @@ const createStripeCheckoutSession = async (req, res, next) => {
       });
     }
 
-    const { shippingDetails, shippingProfileId, notes } = req.body;
+    const notes = String(req.body.notes || '').trim();
+    const { shippingAddress: rawShippingAddress } = req.body;
     const cart = await Cart.findOne({ user: req.user._id }).populate(
       'items.product',
       'name pricingTiers moq status'
@@ -233,38 +234,24 @@ const createStripeCheckoutSession = async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Cart is empty' });
     }
 
-    let selectedShippingDetails = shippingDetails;
-    if (shippingProfileId) {
-      const userDoc = await User.findById(req.user._id).lean();
-      const profile = userDoc.shippingProfiles.find((p) => p._id.toString() === shippingProfileId);
-      if (!profile) {
-        return res.status(404).json({ success: false, message: 'Shipping profile not found' });
-      }
-      selectedShippingDetails = {
-        fullName: profile.fullName,
-        company: profile.company,
-        address: profile.address,
-        city: profile.city,
-        country: profile.country,
-        postalCode: profile.postalCode,
-        phone: profile.phone,
-      };
+    if (!rawShippingAddress || !rawShippingAddress.country) {
+      return res.status(400).json({ success: false, message: 'Shipping address is required' });
     }
 
-    if (
-      !selectedShippingDetails ||
-      !selectedShippingDetails.fullName ||
-      !selectedShippingDetails.address ||
-      !selectedShippingDetails.city ||
-      !selectedShippingDetails.country ||
-      !selectedShippingDetails.phone
-    ) {
-      return res.status(400).json({ success: false, message: 'Shipping details are required' });
+    if (notes.length > 500) {
+      return res.status(400).json({
+        success: false,
+        message: 'Delivery instructions cannot exceed 500 characters.',
+      });
     }
 
-    const restrictions = getShippingRestrictions(selectedShippingDetails.country);
-    if (restrictions.restricted) {
-      return res.status(400).json({ success: false, message: `Shipping to ${selectedShippingDetails.country} is restricted. ${restrictions.notes}`});
+    const { errors: shippingErrors, shippingAddress } = validateShippingAddress(rawShippingAddress);
+    if (shippingErrors.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Shipping address is invalid',
+        errors: shippingErrors,
+      });
     }
 
     const userRow = await User.findById(req.user._id).select('preferredCurrency').lean();
@@ -310,28 +297,13 @@ const createStripeCheckoutSession = async (req, res, next) => {
       totalAmountConverted += item.quantity * unitPriceConverted;
     }
 
-    const totalWeightKg = orderItems.reduce((sum, item) => sum + item.quantity, 0); 
-    const shippingComputationUsd = calculateShippingCost(selectedShippingDetails.country, totalWeightKg, 'USD');
-    const shippingCostUsd = shippingComputationUsd.cost;
-    const shippingCostConverted = currencyService.convert(shippingCostUsd, currency);
-
-    let taxRate = 0;
-    if (selectedShippingDetails.country === 'United States') taxRate = 0.08; // Example 8% US
-    else if (['United Kingdom', 'Germany', 'France', 'Italy'].includes(selectedShippingDetails.country)) taxRate = 0.20; // Example 20% VAT
-    
-    const taxAmountUsd = Math.round((totalAmountUsd + shippingCostUsd) * taxRate * 100) / 100;
-    const taxAmountConverted = currencyService.convert(taxAmountUsd, currency);
-    
-    totalAmountUsd += shippingCostUsd + taxAmountUsd;
-    totalAmountConverted += shippingCostConverted + taxAmountConverted;
-
     const order = new Order({
       user: req.user._id,
       items: orderItems,
-      shippingDetails: selectedShippingDetails,
-      totalAmount: totalAmountUsd, // stored in USD
+      totalAmount: totalAmountUsd, 
       notes,
-      currency, // The currency the user selected to view the order
+      shippingAddress,
+      currency,
       paymentStatus: 'unpaid',
       paymentMethod: 'stripe',
     });
@@ -352,32 +324,6 @@ const createStripeCheckoutSession = async (req, res, next) => {
         quantity: item.quantity,
       };
     });
-
-    if (shippingCostConverted > 0) {
-      lineItems.push({
-        price_data: {
-          currency: currency.toLowerCase(),
-          product_data: {
-            name: 'Shipping Cost',
-          },
-          unit_amount: amountToStripeUnit(shippingCostConverted, currency),
-        },
-        quantity: 1,
-      });
-    }
-
-    if (taxAmountConverted > 0) {
-      lineItems.push({
-        price_data: {
-          currency: currency.toLowerCase(),
-          product_data: {
-            name: 'Estimated Tax / VAT',
-          },
-          unit_amount: amountToStripeUnit(taxAmountConverted, currency),
-        },
-        quantity: 1,
-      });
-    }
 
     try {
       const session = await stripe.checkout.sessions.create({
