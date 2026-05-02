@@ -138,7 +138,8 @@ export default function AdminProducts() {
               Products
             </h1>
             <p className="text-fog text-sm mt-1">
-              {pagination.total} product{pagination.total !== 1 ? "s" : ""} total
+              {pagination.total} product{pagination.total !== 1 ? "s" : ""}{" "}
+              total
             </p>
           </div>
           <Link
@@ -184,7 +185,10 @@ export default function AdminProducts() {
                 </option>
               ))}
             </select>
-            <button type="submit" className="btn-primary text-[13px] py-2.5 px-5">
+            <button
+              type="submit"
+              className="btn-primary text-[13px] py-2.5 px-5"
+            >
               Filter
             </button>
             {(search || category || status) && (
@@ -284,7 +288,7 @@ export default function AdminProducts() {
                       </td>
                       <td className="py-3 px-4 text-sienna text-[13px] font-medium">
                         $
-                        {product.pricingTiers?.[0]?.price?.toFixed(2) ||
+                        {product.pricingTiers?.[0]?.price_usd?.toFixed(2) ||
                           "—"}
                       </td>
                       <td className="py-3 px-4">
@@ -349,7 +353,10 @@ export default function AdminProducts() {
       {/* Delete Confirmation Modal */}
       {deleteConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-md" onClick={() => !deleting && setDeleteConfirm(null)}></div>
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-md"
+            onClick={() => !deleting && setDeleteConfirm(null)}
+          ></div>
           <div className="relative z-10 card max-w-sm w-full p-6 animate-scale-in">
             <h3
               className="text-espresso text-lg mb-2"
