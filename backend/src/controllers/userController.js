@@ -207,92 +207,6 @@ const updatePreferredCurrency = async (req, res, next) => {
   }
 };
 
-// POST /api/users/me/shipping-profiles
-const addShippingProfile = async (req, res, next) => {
-  try {
-    const { name, fullName, company, address, city, country, postalCode, phone, isDefault } = req.body;
-
-    const user = await User.findById(req.user._id);
-    const newProfile = { name, fullName, company, address, city, country, postalCode, phone, isDefault };
-
-    if (isDefault) {
-      user.shippingProfiles.forEach((p) => {
-        p.isDefault = false;
-      });
-    }
-
-    user.shippingProfiles.push(newProfile);
-
-    await user.save();
-
-    res.status(201).json({
-      success: true,
-      message: 'Shipping profile added successfully.',
-      data: { user: user.toJSON() },
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-// PATCH /api/users/me/shipping-profiles/:profileId
-const updateShippingProfile = async (req, res, next) => {
-  try {
-    const { profileId } = req.params;
-    const updates = req.body;
-
-    const user = await User.findById(req.user._id);
-    const profile = user.shippingProfiles.id(profileId);
-    if (!profile) {
-      return res.status(404).json({ success: false, message: 'Shipping profile not found.' });
-    }
-
-    Object.assign(profile, updates);
-
-    if (updates.isDefault) {
-      user.shippingProfiles.forEach((p) => {
-        if (p._id.toString() !== profileId.toString()) {
-          p.isDefault = false;
-        }
-      });
-    }
-
-    await user.save();
-
-    res.status(200).json({
-      success: true,
-      message: 'Shipping profile updated successfully.',
-      data: { user: user.toJSON() },
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-// DELETE /api/users/me/shipping-profiles/:profileId
-const deleteShippingProfile = async (req, res, next) => {
-  try {
-    const { profileId } = req.params;
-
-    const user = await User.findById(req.user._id);
-    const profile = user.shippingProfiles.id(profileId);
-    if (!profile) {
-      return res.status(404).json({ success: false, message: 'Shipping profile not found.' });
-    }
-
-    profile.remove();
-    await user.save();
-
-    res.status(200).json({
-      success: true,
-      message: 'Shipping profile removed.',
-      data: { user: user.toJSON() },
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
 // Helper to format order currency dynamically
 const formatOrderCurrency = (order, preferredCurrency) => {
   if (!order) return order;
@@ -395,9 +309,6 @@ module.exports = {
   updateProfile,
   uploadProfileAvatar,
   updatePreferredCurrency,
-  addShippingProfile,
-  updateShippingProfile,
-  deleteShippingProfile,
   getUserOrders,
   getUserOrderById,
 };
