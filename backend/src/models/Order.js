@@ -25,45 +25,6 @@ const orderItemSchema = new mongoose.Schema(
   { _id: false }
 );
 
-const shippingDetailsSchema = new mongoose.Schema(
-  {
-    fullName: {
-      type: String,
-      required: [true, 'Full name is required'],
-      trim: true,
-    },
-    address: {
-      type: String,
-      required: [true, 'Address is required'],
-      trim: true,
-    },
-    city: {
-      type: String,
-      required: [true, 'City is required'],
-      trim: true,
-    },
-    country: {
-      type: String,
-      required: [true, 'Country is required'],
-      trim: true,
-    },
-    phone: {
-      type: String,
-      required: [true, 'Phone number is required'],
-      trim: true,
-    },
-    company: {
-      type: String,
-      trim: true,
-    },
-    postalCode: {
-      type: String,
-      trim: true,
-    },
-  },
-  { _id: false }
-);
-
 const orderSchema = new mongoose.Schema(
   {
     orderNumber: {
@@ -91,10 +52,6 @@ const orderSchema = new mongoose.Schema(
         message: 'Invalid order status',
       },
       default: 'pending',
-    },
-    shippingDetails: {
-      type: shippingDetailsSchema,
-      required: [true, 'Shipping details are required'],
     },
     totalAmount: {
       type: Number,
@@ -135,6 +92,19 @@ const orderSchema = new mongoose.Schema(
       type: String,
       trim: true,
       maxlength: [500, 'Notes cannot exceed 500 characters'],
+    },
+    shippingAddress: {
+      fullName: { type: String, trim: true, required: [true, 'Shipping full name is required'] },
+      country: { type: String, trim: true, required: [true, 'Shipping country is required'] },
+      countryCode: { type: String, trim: true, uppercase: true, required: [true, 'Shipping country code is required'] },
+      city: { type: String, trim: true, required: [true, 'Shipping city is required'] },
+      state: { type: String, trim: true, required: [true, 'Shipping state / province is required'] },
+      postalCode: { type: String, trim: true, required: [true, 'Shipping postal code is required'] },
+      address: { type: String, trim: true, required: [true, 'Shipping address is required'] },
+      phone: { type: String, trim: true, required: [true, 'Shipping phone is required'] },
+      latitude: { type: Number },
+      longitude: { type: Number },
+      additionalDetails: { type: String, trim: true, maxlength: [1000, 'Additional details cannot exceed 1000 characters'] },
     },
   },
   {
