@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import api from "../utils/api";
 import { useAuth } from "../context/authContext";
 import { ShoppingCart, X, Minus, Plus } from "lucide-react";
@@ -8,22 +8,12 @@ import toast from "react-hot-toast";
 
 export default function CartPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [cart, setCart] = useState({ items: [], totalAmount: 0 });
   const [loading, setLoading] = useState(true);
   const [checkoutBusy, setCheckoutBusy] = useState(false);
   const [updateBusy, setUpdateBusy] = useState(null);
   const [quantityDrafts, setQuantityDrafts] = useState({});
-  const [shipping, setShipping] = useState({
-    fullName: user?.username || "",
-    address: "",
-    city: "",
-    country: "",
-    phone: "",
-    postalCode: "",
-  });
-  const [shippingProfiles, setShippingProfiles] = useState([]);
-  const [selectedProfileId, setSelectedProfileId] = useState("");
-  const [notes, setNotes] = useState("");
 
   const fetchCart = async () => {
     try {
@@ -37,34 +27,8 @@ export default function CartPage() {
     }
   };
 
-  const fetchProfile = async () => {
-    try {
-      const { data } = await api.get("/users/me");
-      const userData = data.data.user;
-      setShippingProfiles(userData.shippingProfiles || []);
-      if (userData.shippingProfiles && userData.shippingProfiles.length > 0) {
-        const defaultProfile =
-          userData.shippingProfiles.find((p) => p.isDefault) ||
-          userData.shippingProfiles[0];
-        setSelectedProfileId(defaultProfile._id);
-        setShipping({
-          fullName: defaultProfile.fullName,
-          company: defaultProfile.company,
-          address: defaultProfile.address,
-          city: defaultProfile.city,
-          country: defaultProfile.country,
-          phone: defaultProfile.phone,
-          postalCode: defaultProfile.postalCode,
-        });
-      }
-    } catch (err) {
-      // ignore non-critical
-    }
-  };
-
   useEffect(() => {
     fetchCart();
-    fetchProfile();
     const params = new URLSearchParams(window.location.search);
     if (params.get("checkout") === "cancelled") {
       toast(
@@ -138,26 +102,9 @@ export default function CartPage() {
     }
   };
 
-  const handleCheckout = async (e) => {
+  const handleCheckout = (e) => {
     e.preventDefault();
-    try {
-      setCheckoutBusy(true);
-      const { data } = await api.post("/cart/checkout-session", {
-        shippingDetails: shipping,
-        shippingProfileId: selectedProfileId || undefined,
-        notes,
-      });
-      const url = data.data?.url;
-      if (url) {
-        window.location.href = url;
-        return;
-      }
-      toast.error("No payment URL returned.");
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Checkout failed");
-    } finally {
-      setCheckoutBusy(false);
-    }
+    navigate('/checkout/international-order');
   };
 
   if (loading) {
@@ -365,138 +312,18 @@ export default function CartPage() {
               </div>
             </div>
 
-            <form
-              onSubmit={handleCheckout}
-              className="mt-8 bg-paper border border-border p-5 rounded-2xl space-y-4"
-            >
-              <h3 className="text-lg font-semibold">Shipping Information</h3>
-
-              {shippingProfiles.length > 0 && (
-                <div>
-                  <label className="text-xs text-fog uppercase tracking-wide">
-                    Saved Shipping Profile
-                  </label>
-                  <select
-                    value={selectedProfileId}
-                    onChange={(e) => {
-                      const selected = shippingProfiles.find(
-                        (p) => p._id === e.target.value,
-                      );
-                      if (selected) {
-                        setSelectedProfileId(selected._id);
-                        setShipping({
-                          fullName: selected.fullName,
-                          company: selected.company,
-                          address: selected.address,
-                          city: selected.city,
-                          country: selected.country,
-                          phone: selected.phone,
-                          postalCode: selected.postalCode,
-                        });
-                      }
-                    }}
-                    className="field"
-                  >
-                    {shippingProfiles.map((profile) => (
-                      <option key={profile._id} value={profile._id}>
-                        {profile.name || profile.fullName}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <input
-                  type="text"
-                  value={shipping.fullName}
-                  onChange={(e) =>
-                    setShipping((prev) => ({
-                      ...prev,
-                      fullName: e.target.value,
-                    }))
-                  }
-                  placeholder="Full name"
-                  required
-                  className="field"
-                />
-                <input
-                  type="text"
-                  value={shipping.phone}
-                  onChange={(e) =>
-                    setShipping((prev) => ({ ...prev, phone: e.target.value }))
-                  }
-                  placeholder="Phone"
-                  required
-                  className="field"
-                />
-                <input
-                  type="text"
-                  value={shipping.address}
-                  onChange={(e) =>
-                    setShipping((prev) => ({
-                      ...prev,
-                      address: e.target.value,
-                    }))
-                  }
-                  placeholder="Address"
-                  required
-                  className="field md:col-span-2"
-                />
-                <input
-                  type="text"
-                  value={shipping.city}
-                  onChange={(e) =>
-                    setShipping((prev) => ({ ...prev, city: e.target.value }))
-                  }
-                  placeholder="City"
-                  required
-                  className="field"
-                />
-                <input
-                  type="text"
-                  value={shipping.country}
-                  onChange={(e) =>
-                    setShipping((prev) => ({
-                      ...prev,
-                      country: e.target.value,
-                    }))
-                  }
-                  placeholder="Country"
-                  required
-                  className="field"
-                />
-                <input
-                  type="text"
-                  value={shipping.postalCode}
-                  onChange={(e) =>
-                    setShipping((prev) => ({
-                      ...prev,
-                      postalCode: e.target.value,
-                    }))
-                  }
-                  placeholder="Postal Code"
-                  className="field"
-                />
-              </div>
-
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Order notes (optional)"
-                className="field h-24"
-              />
-
+            <div className="mt-8 bg-paper border border-border p-5 rounded-2xl">
               <button
-                type="submit"
+                type="button"
+                onClick={handleCheckout}
                 disabled={checkoutBusy}
                 className="btn-primary w-full py-3"
               >
                 {checkoutBusy
                   ? "Redirecting to secure payment…"
-                  : `Proceed to Secure Payment`}
+                  : "Proceed to Payment"}
               </button>
-            </form>
+            </div>
           </>
         )}
       </div>
