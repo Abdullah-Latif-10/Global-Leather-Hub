@@ -2,7 +2,6 @@ const mongoose = require('mongoose');
 const Product = require('../models/Product');
 const Order = require('../models/Order');
 const User = require('../models/User');
-const BulkOrder = require('../models/BulkOrder');
 const { uploadBufferToCloudinary, deleteFromCloudinary } = require('../utils/cloudinary');
 const logger = require('../utils/logger');
 const { normalizePricingTiers } = require('../utils/pricingTiers');
@@ -363,10 +362,7 @@ const deleteProduct = async (req, res, next) => {
     const id = req.params.id;
     await removeProductFromAllCarts(id);
     await cancelUnpaidOrdersContainingProduct(id);
-    await BulkOrder.updateMany(
-      { 'products.productId': id },
-      { $pull: { products: { productId: new mongoose.Types.ObjectId(id) } } }
-    );
+    // Remove references to deleted BulkOrder model (feature removed)
 
     // Clean up Cloudinary images
     for (const image of product.images) {
@@ -417,11 +413,45 @@ const getAllOrders = async (req, res, next) => {
         .lean(),
       Order.countDocuments(filter),
     ]);
+    // Normalize order fields for admin UI (handle currency conversion if needed)
+    const currencyService = require('../services/CurrencyService');
+    const normalizedOrders = orders.map((o) => {
+      const order = { ...o };
+      // Determine currency used for the paid amount
+      const currencyUsed = (order.currency_used || order.currency || 'USD').toUpperCase();
+
+      // If paid_amount exists and is > 0, convert it to USD for admin display.
+      if (order.paid_amount !== undefined && order.paid_amount !== null && Number(order.paid_amount) > 0) {
+        const paid = Number(order.paid_amount || 0);
+        const rate = currencyService.rates[currencyUsed] || 1;
+        // convert from currencyUsed -> USD: usd = paid / rate
+        const paidUsd = rate === 0 ? 0 : Math.round((paid / rate) * 100) / 100;
+        order.totalAmount = paidUsd;
+      } else {
+        // totalAmount stored on order should be USD (base_amount_usd + shippingUsd)
+        order.totalAmount = Number(order.totalAmount || 0);
+      }
+
+      order.currency = 'USD';
+
+      // Ensure each item has a numeric `price` in USD
+      if (Array.isArray(order.items)) {
+        order.items = order.items.map((it) => {
+          const priceUsd = Number(it.price_usd || 0);
+          return {
+            ...it,
+            price: priceUsd,
+          };
+        });
+      }
+
+      return order;
+    });
 
     res.status(200).json({
       success: true,
       data: {
-        orders,
+        orders: normalizedOrders,
         pagination: {
           page,
           limit,
@@ -463,7 +493,7 @@ const updateOrderStatus = async (req, res, next) => {
   try {
     const { status } = req.body;
 
-    const order = await Order.findById(req.params.id);
+    const order = await Order.findById(req.params.id).populate('user', 'username email');
     if (!order) {
       return res.status(404).json({
         success: false,
@@ -471,39 +501,58 @@ const updateOrderStatus = async (req, res, next) => {
       });
     }
 
-    // Prevent invalid status transitions
-    const validTransitions = {
+    // Normalize status input
+    const nextStatus = (status || '').toLowerCase();
+    const currentStatus = (order.status || 'confirmed').toLowerCase();
+
+    // Define allowed transitions
+    const allowed = {
       pending: ['confirmed', 'cancelled'],
       confirmed: ['processing', 'cancelled'],
       processing: ['shipped', 'cancelled'],
-      shipped: ['delivered'],
+      shipped: ['delivered', 'cancelled'],
       delivered: [],
       cancelled: [],
     };
 
-    if (!validTransitions[order.status]?.includes(status)) {
-      return res.status(400).json({
-        success: false,
-        message: `Cannot change order status from '${order.status}' to '${status}'.`,
+    if (!allowed[currentStatus]) {
+      return res.status(400).json({ 
+        success: false, 
+        message: `Invalid current order status: ${currentStatus}` 
       });
     }
 
-    if (order.paymentStatus === 'unpaid' && status !== 'cancelled') {
+    if (!allowed[currentStatus].includes(nextStatus)) {
       return res.status(400).json({
         success: false,
-        message:
-          'Order is awaiting payment. Cancel it or wait until Stripe marks the order as paid.',
+        message: `Cannot transition from ${currentStatus} to ${nextStatus}. Allowed: ${allowed[currentStatus].join(', ') || 'none'}`,
       });
     }
 
-    order.status = status;
+    // Perform transition
+    order.statusHistory = order.statusHistory || [];
+    order.statusHistory.push({ 
+      from: currentStatus, 
+      to: nextStatus, 
+      by: req.user._id, 
+      at: new Date() 
+    });
+    order.status = nextStatus;
     await order.save();
 
-    logger.info(`Order ${order.orderNumber} status updated to ${status} by admin ${req.user.email}`);
+    // Send email notification to user
+    try {
+      const { sendOrderStatusEmail } = require('../utils/email');
+      await sendOrderStatusEmail(order.user, nextStatus, order);
+    } catch (e) {
+      logger.warn(`Failed to send status change email: ${e.message}`);
+    }
+
+    logger.info(`Order ${order.orderNumber} status updated to ${nextStatus} by admin ${req.user.email}`);
 
     res.status(200).json({
       success: true,
-      message: `Order status updated to '${status}'.`,
+      message: `Order status updated to '${nextStatus}'.`,
       data: { order },
     });
   } catch (error) {
@@ -512,108 +561,7 @@ const updateOrderStatus = async (req, res, next) => {
 };
 
 
-// PATCH /api/admin/orders/:id/tracking — shipment tracking (carrier, number, public URL)
-const updateOrderTracking = async (req, res, next) => {
-  try {
-    const { carrier, number, url } = req.body;
-    const order = await Order.findById(req.params.id);
-    if (!order) {
-      return res.status(404).json({ success: false, message: 'Order not found.' });
-    }
 
-    if (!number || !String(number).trim()) {
-      return res.status(400).json({ success: false, message: 'Tracking number is required.' });
-    }
-
-    if (url && url.trim() && !/^https?:\/\//i.test(url.trim())) {
-      return res.status(400).json({ success: false, message: 'Tracking URL must start with http:// or https://' });
-    }
-
-    order.tracking = {
-      carrier: carrier || undefined,
-      number: String(number).trim(),
-      url: url && String(url).trim() ? String(url).trim() : undefined,
-      updatedAt: new Date(),
-    };
-
-    await order.save();
-
-    logger.info(`Tracking set for order ${order.orderNumber} by admin ${req.user.email}`);
-
-    res.status(200).json({
-      success: true,
-      message: 'Tracking information updated.',
-      data: { order },
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-// GET /api/admin/bulk-orders
-const getAllBulkOrders = async (req, res, next) => {
-  try {
-    const page = Math.max(1, parseInt(req.query.page) || 1);
-    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 10));
-    const skip = (page - 1) * limit;
-
-    const filter = {};
-    if (req.query.status) filter.status = req.query.status;
-
-    const [orders, total] = await Promise.all([
-      BulkOrder.find(filter)
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .populate('user', 'username email company country')
-        .lean(),
-      BulkOrder.countDocuments(filter),
-    ]);
-
-    res.status(200).json({
-      success: true,
-      data: {
-        bulkOrders: orders,
-        pagination: {
-          page,
-          limit,
-          total,
-          pages: Math.ceil(total / limit),
-        },
-      },
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-// PATCH /api/admin/bulk-orders/:id
-const updateBulkOrder = async (req, res, next) => {
-  try {
-    const { status, adminNotes, quotationDetails } = req.body;
-    const bulkOrder = await BulkOrder.findById(req.params.id);
-    if (!bulkOrder) {
-      return res.status(404).json({ success: false, message: 'Bulk order not found.' });
-    }
-
-    if (status) bulkOrder.status = status;
-    if (adminNotes !== undefined) bulkOrder.adminNotes = adminNotes;
-    if (quotationDetails && typeof quotationDetails === 'object') {
-      bulkOrder.quotationDetails = bulkOrder.quotationDetails || {};
-      Object.assign(bulkOrder.quotationDetails, quotationDetails);
-    }
-
-    await bulkOrder.save();
-
-    res.status(200).json({
-      success: true,
-      message: 'Bulk quotation updated.',
-      data: { bulkOrder },
-    });
-  } catch (error) {
-    next(error);
-  }
-};
 
 // GET /api/admin/customers
 const getAllCustomers = async (req, res, next) => {
@@ -669,8 +617,5 @@ module.exports = {
   getAllOrders,
   getOrderById,
   updateOrderStatus,
-  updateOrderTracking,
-  getAllBulkOrders,
-  updateBulkOrder,
   getAllCustomers,
 };
