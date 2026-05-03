@@ -15,7 +15,6 @@ const ADMIN_NAV = [
   { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
   { label: "Products", href: "/admin/products", icon: Package },
   { label: "Orders", href: "/admin/orders", icon: ShoppingCart },
-  { label: "Bulk RFQs", href: "/admin/bulk-orders", icon: FileStack },
   { label: "Customers", href: "/admin/customers", icon: Users },
 ];
 
@@ -30,7 +29,6 @@ export default function AdminLayout() {
 
   return (
     <div className="min-h-screen bg-canvas flex flex-col md:flex-row pt-16 md:pt-20">
-      
       {/* ── Mobile Tab Navigation (Horizontal Scroll) ── */}
       <div className="md:hidden sticky top-16 z-30 bg-paper border-b border-border shadow-soft w-full overflow-x-auto no-scrollbar">
         <div className="flex px-4 py-2 gap-2 min-w-max">
@@ -47,7 +45,9 @@ export default function AdminLayout() {
                     : "text-fog bg-linen/50 hover:text-espresso hover:bg-linen"
                 }`}
               >
-                <Icon className={`w-3.5 h-3.5 ${active ? "text-paper" : "text-fog"}`} />
+                <Icon
+                  className={`w-3.5 h-3.5 ${active ? "text-paper" : "text-fog"}`}
+                />
                 {item.label}
               </Link>
             );
@@ -76,7 +76,11 @@ export default function AdminLayout() {
             className="p-1.5 rounded-lg hover:bg-linen text-fog hover:text-espresso transition-all duration-200"
             title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
-            {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+            {collapsed ? (
+              <ChevronRight className="w-4 h-4" />
+            ) : (
+              <ChevronLeft className="w-4 h-4" />
+            )}
           </button>
         </div>
 
