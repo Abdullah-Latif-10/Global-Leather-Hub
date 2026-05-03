@@ -51,12 +51,30 @@ const orderSchema = new mongoose.Schema(
         values: ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'],
         message: 'Invalid order status',
       },
-      default: 'pending',
+      default: 'confirmed',
     },
     totalAmount: {
       type: Number,
       required: [true, 'Total amount is required'],
       min: [0, 'Total amount cannot be negative'],
+    },
+    base_amount_usd: {
+      type: Number,
+      required: false,
+      min: [0, 'Base amount USD cannot be negative'],
+    },
+    paid_amount: {
+      type: Number,
+      default: 0,
+      min: [0, 'Paid amount cannot be negative'],
+    },
+    currency_used: {
+      type: String,
+      trim: true,
+      uppercase: true,
+    },
+    exchange_rate_used: {
+      type: Number,
     },
     currency: {
       type: String,
@@ -66,7 +84,9 @@ const orderSchema = new mongoose.Schema(
     paymentStatus: {
       type: String,
       enum: ['unpaid', 'paid', 'failed', 'refunded'],
+      default: 'unpaid',
     },
+    payment_intent_id: { type: String },
     paymentMethod: {
       type: String,
       default: 'stripe',
@@ -78,6 +98,21 @@ const orderSchema = new mongoose.Schema(
     },
     stripePaymentIntentId: {
       type: String,
+    },
+    // history of status transitions
+    statusHistory: [
+      {
+        from: { type: String },
+        to: { type: String },
+        by: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        at: { type: Date, default: Date.now },
+        note: { type: String },
+      },
+    ],
+    shipping: {
+      amount_usd: { type: Number },
+      currency: { type: String },
+      amount_converted: { type: Number },
     },
     paidAt: {
       type: Date,
