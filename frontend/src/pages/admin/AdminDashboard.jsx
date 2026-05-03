@@ -98,12 +98,12 @@ export default function AdminDashboard() {
       link: "/admin/products",
     },
     {
-      label: "Total Orders",
-      value: stats.totalOrders,
+      label: "Confirmed Orders",
+      value: stats.ordersByStatus?.confirmed || 0,
       icon: ShoppingCart,
       color: "text-sienna",
       bg: "bg-sienna/10",
-      link: "/admin/orders",
+      link: "/admin/orders?status=confirmed",
     },
     {
       label: "Revenue (paid)",
@@ -125,12 +125,12 @@ export default function AdminDashboard() {
       link: "/admin/customers",
     },
     {
-      label: "Pending Orders",
-      value: stats.ordersByStatus?.pending || 0,
+      label: "Completed Orders",
+      value: stats.ordersByStatus?.delivered || 0,
       icon: TrendingUp,
       color: "text-rust",
       bg: "bg-rust/10",
-      link: "/admin/orders?status=pending",
+      link: "/admin/orders?status=delivered",
     },
   ];
 
