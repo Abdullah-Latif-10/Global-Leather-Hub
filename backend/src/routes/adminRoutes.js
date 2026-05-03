@@ -12,9 +12,6 @@ const {
   getAllOrders,
   getOrderById,
   updateOrderStatus,
-  updateOrderTracking,
-  getAllBulkOrders,
-  updateBulkOrder,
   getAllCustomers,
 } = require('../controllers/adminController');
 
@@ -22,8 +19,6 @@ const {
   productValidator,
   updateProductValidator,
   orderStatusValidator,
-  orderTrackingValidator,
-  bulkOrderPatchValidator,
   mongoIdParam,
 } = require('../validators/adminValidators');
 
@@ -50,11 +45,7 @@ router.delete('/products/:id', mongoIdParam, validate, deleteProduct);
 router.get('/orders', getAllOrders);
 router.get('/orders/:id', mongoIdParam, validate, getOrderById);
 router.patch('/orders/:id/status', orderStatusValidator, validate, updateOrderStatus);
-router.patch('/orders/:id/tracking', orderTrackingValidator, validate, updateOrderTracking);
 
-// Bulk quotation requests
-router.get('/bulk-orders', getAllBulkOrders);
-router.patch('/bulk-orders/:id', bulkOrderPatchValidator, validate, updateBulkOrder);
 
 // Customers
 router.get('/customers', getAllCustomers);
