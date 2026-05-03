@@ -19,6 +19,7 @@ const logger = require('./utils/logger');
 
 const app = express();
 
+app.set('trust proxy', 1);
 // Stripe webhooks require the raw body for signature verification
 app.post(
   '/api/webhooks/stripe',

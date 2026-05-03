@@ -4,9 +4,6 @@ const User = require('../models/User');
 
 const createTransporter = () => {
   return nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: parseInt(process.env.SMTP_PORT) || 587,
-    secure: process.env.SMTP_PORT === '465',
     service:'gmail',
     auth: {
       user: process.env.SMTP_USER,
