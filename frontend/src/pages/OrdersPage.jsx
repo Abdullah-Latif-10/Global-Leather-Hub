@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { Package, ChevronRight, ArrowRight } from 'lucide-react';
 import api from '../utils/api';
 import { formatCurrency } from '../utils/currency';
 import { useAuth } from '../context/authContext';
@@ -15,7 +16,6 @@ const OrdersPage = () => {
 
   const statusOptions = [
     { value: '', label: 'All Orders' },
-    { value: 'pending', label: 'Pending' },
     { value: 'confirmed', label: 'Confirmed' },
     { value: 'processing', label: 'Processing' },
     { value: 'shipped', label: 'Shipped' },
@@ -25,14 +25,14 @@ const OrdersPage = () => {
 
   const getStatusColor = (status) => {
     const colors = {
-      pending: 'bg-yellow-100 text-yellow-800',
-      confirmed: 'bg-blue-100 text-blue-800',
-      processing: 'bg-purple-100 text-purple-800',
-      shipped: 'bg-indigo-100 text-indigo-800',
-      delivered: 'bg-green-100 text-green-800',
-      cancelled: 'bg-red-100 text-red-800',
+      pending: 'bg-amber-50 text-amber-800 border-amber-200',
+      confirmed: 'bg-sky-50 text-sky-800 border-sky-200',
+      processing: 'bg-purple-50 text-purple-800 border-purple-200',
+      shipped: 'bg-indigo-50 text-indigo-800 border-indigo-200',
+      delivered: 'bg-emerald-50 text-emerald-800 border-emerald-200',
+      cancelled: 'bg-rose-50 text-rose-800 border-rose-200',
     };
-    return colors[status] || 'bg-gray-100 text-gray-800';
+    return colors[status] || 'bg-linen text-espresso border-border';
   };
 
   const fetchOrders = async (page = 1, status = statusFilter) => {
@@ -71,11 +71,11 @@ const OrdersPage = () => {
 
   if (loading && orders.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading your orders...</p>
+      <div className="min-h-screen bg-canvas pt-24 pb-16">
+        <div className="max-w-7xl mx-auto px-6 lg:px-10">
+          <div className="text-center py-20">
+            <div className="animate-spin rounded-full h-12 w-12 border-2 border-tan/20 border-t-tan mx-auto"></div>
+            <p className="mt-4 text-fog text-sm">Loading your orders...</p>
           </div>
         </div>
       </div>
@@ -83,24 +83,35 @@ const OrdersPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">My Orders</h1>
-          <p className="mt-2 text-gray-600">Track and manage your order history</p>
+    <div className="min-h-screen bg-canvas pt-24 pb-16">
+      <div className="max-w-7xl mx-auto px-6 lg:px-10">
+        {/* Header */}
+        <div className="mb-10 md:mb-14">
+          <p className="eyebrow mb-3">Order Management</p>
+          <h1
+            className="text-espresso leading-tight mb-3"
+            style={{
+              fontFamily: '"Playfair Display", serif',
+              fontSize: "clamp(2rem, 4vw, 3rem)",
+              fontWeight: 400,
+            }}
+          >
+            My <em style={{ fontStyle: "italic", color: "#8B5E3C" }}>Orders</em>
+          </h1>
+          <p className="text-fog text-sm md:text-base">Track and manage your order history</p>
         </div>
 
         {/* Status Filter */}
-        <div className="mb-6">
+        <div className="mb-8">
           <div className="flex flex-wrap gap-2">
             {statusOptions.map((option) => (
               <button
                 key={option.value}
                 onClick={() => handleStatusFilter(option.value)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                className={`px-4 py-2 rounded-full text-xs md:text-[13px] font-medium transition-all duration-300 ${
                   statusFilter === option.value
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                    ? 'bg-tan text-paper shadow-soft'
+                    : 'bg-paper text-espresso border border-border hover:border-tan/60 hover:bg-linen'
                 }`}
               >
                 {option.label}
@@ -110,69 +121,87 @@ const OrdersPage = () => {
         </div>
 
         {error && (
-          <div className="mb-6 bg-red-50 border border-red-200 rounded-md p-4">
-            <p className="text-red-800">{error}</p>
+          <div className="mb-6 bg-rose-50 border border-rose-200 rounded-2xl p-4">
+            <p className="text-rose-800 text-sm">{error}</p>
           </div>
         )}
 
         {/* Orders List */}
         {orders.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="text-gray-400 mb-4">
-              <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
+          <div className="text-center py-16 md:py-24">
+            <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-linen border border-border flex items-center justify-center">
+              <Package className="w-8 h-8 text-tan" />
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No orders found</h3>
-            <p className="text-gray-600 mb-6">
+            <h3
+              className="text-espresso text-xl md:text-2xl mb-3"
+              style={{
+                fontFamily: '"Playfair Display", serif',
+                fontWeight: 400,
+              }}
+            >
+              No orders found
+            </h3>
+            <p className="text-fog text-sm md:text-base mb-8 max-w-md mx-auto">
               {statusFilter ? `No ${statusFilter} orders found.` : 'You haven\'t placed any orders yet.'}
             </p>
             {!statusFilter && (
-              <Link
-                to="/products"
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-              >
-                Browse Products
+              <Link to="/products" className="btn-primary text-sm">
+                Browse Products <ArrowRight className="w-4 h-4" />
               </Link>
             )}
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-4 md:space-y-6">
             {orders.map((order) => (
-              <div key={order._id} className="bg-white shadow rounded-lg overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-200">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-lg font-medium text-gray-900">
+              <div key={order._id} className="card card-lift group">
+                {/* Order Header */}
+                <div className="p-4 md:p-6 border-b border-border">
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-4">
+                    <div className="flex-1">
+                      <h3
+                        className="text-espresso text-base md:text-lg mb-1"
+                        style={{
+                          fontFamily: '"Playfair Display", serif',
+                          fontWeight: 500,
+                        }}
+                      >
                         Order #{order._id.slice(-8).toUpperCase()}
                       </h3>
-                      <p className="text-sm text-gray-600">
-                        Placed on {new Date(order.createdAt).toLocaleDateString()}
+                      <p className="text-fog text-xs md:text-sm">
+                        Placed on {new Date(order.createdAt).toLocaleDateString('en-US', { 
+                          year: 'numeric', 
+                          month: 'long', 
+                          day: 'numeric' 
+                        })}
                       </p>
                     </div>
-                    <div className="text-right">
-                      <div className="flex flex-col items-end gap-1">
+                    <div className="flex items-center justify-between md:flex-col md:items-end gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         {order.paymentStatus === 'unpaid' && (
-                          <span className="inline-flex px-2 py-0.5 text-[10px] font-semibold rounded-full bg-amber-100 text-amber-900">
+                          <span className="badge-tan text-[10px]">
                             Payment pending
                           </span>
                         )}
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(order.status)}`}>
+                        <span className={`inline-flex px-3 py-1 text-[10px] md:text-xs font-semibold rounded-full border ${getStatusColor(order.status)}`}>
                           {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                         </span>
                       </div>
-                      <p className="text-lg font-semibold text-gray-900 mt-1">
+                      <p
+                        className="text-sienna text-lg md:text-xl font-semibold"
+                        style={{ fontFamily: '"Playfair Display", serif' }}
+                      >
                         {formatCurrency(order.totalAmount, order.currency || user?.preferredCurrency)}
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className="px-6 py-4">
+                {/* Order Items */}
+                <div className="p-4 md:p-6">
                   <div className="space-y-4">
                     {order.items.map((item, index) => (
-                      <div key={index} className="flex items-center space-x-4">
-                        <div className="flex-shrink-0 w-16 h-16 bg-gray-200 rounded-md overflow-hidden">
+                      <div key={index} className="flex items-center gap-3 md:gap-4">
+                        <div className="flex-shrink-0 w-14 h-14 md:w-16 md:h-16 bg-linen rounded-xl overflow-hidden border border-border">
                           {item.product?.images?.[0] ? (
                             <img
                               src={item.product.images[0].url || item.product.images[0]}
@@ -180,25 +209,26 @@ const OrdersPage = () => {
                               className="w-full h-full object-cover"
                             />
                           ) : (
-                            <div className="w-full h-full flex items-center justify-center text-gray-400">
-                              <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                              </svg>
+                            <div className="w-full h-full flex items-center justify-center text-tan/40">
+                              <Package className="w-6 h-6 md:w-8 md:h-8" />
                             </div>
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
                           <Link
                             to={`/products/${item.product?._id}`}
-                            className="text-sm font-medium text-gray-900 hover:text-blue-600"
+                            className="text-espresso text-sm md:text-base font-medium hover:text-tan transition-colors link-underline block truncate"
                           >
                             {item.product?.name || 'Product'}
                           </Link>
-                          <p className="text-sm text-gray-600">
-                            Quantity: {item.quantity} × {formatCurrency(item.price, order.currency || user?.preferredCurrency)}
+                          <p className="text-fog text-xs md:text-sm mt-0.5">
+                            Qty: {item.quantity} × {formatCurrency(item.price, order.currency || user?.preferredCurrency)}
                           </p>
                         </div>
-                        <div className="text-sm font-medium text-gray-900">
+                        <div
+                          className="text-espresso text-sm md:text-base font-semibold flex-shrink-0"
+                          style={{ fontFamily: '"Playfair Display", serif' }}
+                        >
                           {formatCurrency((item.quantity * item.price), order.currency || user?.preferredCurrency)}
                         </div>
                       </div>
@@ -206,16 +236,18 @@ const OrdersPage = () => {
                   </div>
                 </div>
 
-                <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
+                {/* Order Footer */}
+                <div className="p-4 md:p-6 bg-linen/30 border-t border-border">
                   <div className="flex justify-between items-center">
-                    <div className="text-sm text-gray-600">
+                    <div className="text-fog text-xs md:text-sm">
                       {order.items.length} item{order.items.length !== 1 ? 's' : ''}
                     </div>
                     <Link
                       to={`/orders/${order._id}`}
-                      className="text-blue-600 hover:text-blue-500 text-sm font-medium"
+                      className="flex items-center gap-1.5 text-tan hover:text-sienna text-xs md:text-sm font-medium transition-colors group"
                     >
-                      View Details →
+                      View Details
+                      <ChevronRight className="w-3.5 h-3.5 md:w-4 md:h-4 transition-transform group-hover:translate-x-1" />
                     </Link>
                   </div>
                 </div>
@@ -226,38 +258,46 @@ const OrdersPage = () => {
 
         {/* Pagination */}
         {pagination.pages > 1 && (
-          <div className="mt-8 flex justify-center">
-            <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+          <div className="mt-10 md:mt-12 flex justify-center">
+            <nav className="inline-flex items-center gap-1 md:gap-2">
               <button
                 onClick={() => handlePageChange(currentPage - 1)}
                 disabled={currentPage === 1}
-                className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                className="w-9 h-9 md:w-10 md:h-10 rounded-xl border border-border bg-paper flex items-center justify-center text-espresso hover:border-tan/60 hover:bg-linen transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-paper disabled:hover:border-border"
               >
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
               </button>
 
-              {Array.from({ length: pagination.pages }, (_, i) => i + 1).map((page) => (
-                <button
-                  key={page}
-                  onClick={() => handlePageChange(page)}
-                  className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                    page === currentPage
-                      ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
-                      : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                  }`}
-                >
-                  {page}
-                </button>
-              ))}
+              <div className="hidden md:flex items-center gap-1">
+                {Array.from({ length: pagination.pages }, (_, i) => i + 1).map((page) => (
+                  <button
+                    key={page}
+                    onClick={() => handlePageChange(page)}
+                    className={`min-w-[40px] h-10 px-3 rounded-xl text-sm font-medium transition-all duration-300 ${
+                      page === currentPage
+                        ? 'bg-tan text-paper shadow-soft'
+                        : 'bg-paper border border-border text-espresso hover:border-tan/60 hover:bg-linen'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+              </div>
+
+              <div className="md:hidden flex items-center gap-2 px-3">
+                <span className="text-espresso text-sm font-medium">
+                  {currentPage} / {pagination.pages}
+                </span>
+              </div>
 
               <button
                 onClick={() => handlePageChange(currentPage + 1)}
                 disabled={currentPage === pagination.pages}
-                className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                className="w-9 h-9 md:w-10 md:h-10 rounded-xl border border-border bg-paper flex items-center justify-center text-espresso hover:border-tan/60 hover:bg-linen transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-paper disabled:hover:border-border"
               >
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
               </button>
