@@ -10,7 +10,6 @@
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
-    "cloudflare": "^3.5.0",
     "cloudinary": "^2.9.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
@@ -26,7 +25,6 @@
     "nodemailer": "^6.9.14",
     "streamifier": "^0.1.1",
     "stripe": "^22.0.0",
-    "uuid": "^10.0.0",
     "winston": "^3.13.0",
     "xss-clean": "^0.1.4"
   },
