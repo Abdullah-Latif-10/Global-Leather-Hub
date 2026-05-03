@@ -15,7 +15,6 @@ import toast from "react-hot-toast";
 
 const NAV_LINKS = [
   { label: "Products", href: "/products" },
-  { label: "Bulk Orders", href: "/bulk-orders" },
   { label: "About", href: "/about" },
   { label: "Contact", href: "/contact" },
 ];
@@ -278,32 +277,62 @@ export default function Navbar() {
             <div className="rule mt-3 pt-3 mx-4 flex flex-col gap-2">
               {isAuthenticated ? (
                 <>
+                  {user?.role !== "admin" && (
+                    <Link
+                      to="/cart"
+                      className="flex items-center gap-2.5 py-2.5 text-[13px] text-espresso font-medium hover:text-sienna transition-colors"
+                    >
+                      <ShoppingCart className="w-4 h-4" />
+                      Cart
+                      {cartCount > 0 && (
+                        <span className="ml-auto min-w-[20px] h-5 rounded-full bg-rust text-white text-[10px] font-semibold flex items-center justify-center px-1.5">
+                          {cartCount}
+                        </span>
+                      )}
+                    </Link>
+                  )}
                   <Link
                     to="/profile"
-                    className="block py-2.5 text-[13px] text-espresso font-medium hover:text-sienna transition-colors"
+                    className="flex items-center gap-2.5 py-2.5 text-[13px] text-espresso font-medium hover:text-sienna transition-colors"
                   >
+                    <User className="w-4 h-4" />
                     My Account
                   </Link>
                   {user?.role !== "admin" && (
                     <Link
                       to="/orders"
-                      className="block py-2.5 text-[13px] text-espresso font-medium hover:text-sienna transition-colors"
+                      className="flex items-center gap-2.5 py-2.5 text-[13px] text-espresso font-medium hover:text-sienna transition-colors"
                     >
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                        />
+                      </svg>
                       My Orders
                     </Link>
                   )}
                   {user?.role === "admin" && (
                     <Link
                       to="/admin"
-                      className="block py-2.5 text-[13px] text-tan font-medium hover:text-sienna transition-colors"
+                      className="flex items-center gap-2.5 py-2.5 text-[13px] text-tan font-medium hover:text-sienna transition-colors"
                     >
+                      <Shield className="w-4 h-4" />
                       Admin Panel
                     </Link>
                   )}
                   <button
                     onClick={handleLogout}
-                    className="text-left py-2.5 text-[13px] text-rust font-medium"
+                    className="flex items-center gap-2.5 text-left py-2.5 text-[13px] text-rust font-medium"
                   >
+                    <LogOut className="w-4 h-4" />
                     Sign Out
                   </button>
                 </>
