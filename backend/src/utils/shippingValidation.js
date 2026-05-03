@@ -144,7 +144,6 @@ const validateShippingAddress = (payload) => {
 };
 
 module.exports = {
-  normalizeCountryCode,
-  validatePhoneForCountry,
+  DIAL_CODES,
   validateShippingAddress,
 };
