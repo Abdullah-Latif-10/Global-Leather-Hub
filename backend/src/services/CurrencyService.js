@@ -1,4 +1,3 @@
-const fetch = require('node-fetch');
 
 class CurrencyService {
   constructor() {
