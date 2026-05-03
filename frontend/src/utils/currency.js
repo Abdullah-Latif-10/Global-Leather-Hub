@@ -21,7 +21,7 @@ export const CURRENCY_NAMES = {
   AED: 'UAE Dirham',
 };
 
-export const getCurrencySymbol = (currency) => {
+const getCurrencySymbol = (currency) => {
   return CURRENCY_SYMBOLS[currency] || CURRENCY_SYMBOLS.USD;
 };
 
