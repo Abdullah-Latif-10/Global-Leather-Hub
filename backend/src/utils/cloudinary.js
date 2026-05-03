@@ -28,7 +28,6 @@ const deleteFromCloudinary = async (publicId) => {
 };
 
 module.exports = {
-  cloudinary,
   uploadBufferToCloudinary,
   deleteFromCloudinary,
 };
