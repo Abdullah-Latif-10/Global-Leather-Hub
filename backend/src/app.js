@@ -76,6 +76,14 @@ const globalLimiter = rateLimit({
 app.use('/api', globalLimiter);
 
 
+app.get('/', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'Global Leather Hub API',
+    docs: '/api/health',
+  });
+});
+
 app.get('/api/health', (req, res) => {
   res.status(200).json({
     success: true,
