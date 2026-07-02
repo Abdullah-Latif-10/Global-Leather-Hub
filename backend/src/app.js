@@ -16,8 +16,19 @@ const shippingRoutes = require('./routes/shippingRoutes');
 const paymentController = require('./controllers/paymentController');
 const { notFound, errorHandler } = require('./middleware/errorHandler');
 const logger = require('./utils/logger');
+const connectDB = require('./config/database');
 
 const app = express();
+
+// Ensure database connection is active on every request (serverless compatible)
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
 
 app.set('trust proxy', 1);
 // Stripe webhooks require the raw body for signature verification

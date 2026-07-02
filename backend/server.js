@@ -5,9 +5,15 @@ const logger = require('./src/utils/logger');
 const fs = require('fs');
 const path = require('path');
 
-const logsDir = path.join(__dirname, 'logs');
-if (!fs.existsSync(logsDir)) {
-  fs.mkdirSync(logsDir, { recursive: true });
+if (process.env.NODE_ENV !== 'production') {
+  try {
+    const logsDir = path.join(__dirname, 'logs');
+    if (!fs.existsSync(logsDir)) {
+      fs.mkdirSync(logsDir, { recursive: true });
+    }
+  } catch (err) {
+    console.error('Failed to create logs directory:', err.message);
+  }
 }
 console.log(process.env.PORT)
 const PORT = process.env.PORT || 8080;
@@ -49,4 +55,10 @@ const startServer = async () => {
   }
 };
 
-startServer();
+// Only start the HTTP server when run directly (local dev).
+// Vercel imports this file as a module and uses the exported app.
+if (require.main === module) {
+  startServer();
+}
+
+module.exports = app;

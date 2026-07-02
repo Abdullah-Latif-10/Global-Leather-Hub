@@ -2,6 +2,11 @@ const mongoose = require('mongoose');
 const logger = require('../utils/logger');
 
 const connectDB = async () => {
+  // If already connected, do not attempt to reconnect
+  if (mongoose.connection.readyState >= 1) {
+    return;
+  }
+
   try {
     const conn = await mongoose.connect(process.env.MONGODB_URI, {
       serverSelectionTimeoutMS: 5000,
@@ -25,7 +30,7 @@ const connectDB = async () => {
 
   } catch (error) {
     logger.error(`MongoDB connection failed: ${error.message}`);
-    process.exit(1);
+    throw error;
   }
 };
 

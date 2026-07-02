@@ -27,24 +27,32 @@ const format = winston.format.combine(
   )
 );
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 const transports = [
   new winston.transports.Console(),
-  new winston.transports.File({
-    filename: path.join(__dirname, '../../logs/error.log'),
-    level: 'error',
-    format: winston.format.combine(
-      winston.format.uncolorize(),
-      winston.format.json()
-    ),
-  }),
-  new winston.transports.File({
-    filename: path.join(__dirname, '../../logs/combined.log'),
-    format: winston.format.combine(
-      winston.format.uncolorize(),
-      winston.format.json()
-    ),
-  }),
 ];
+
+// File transports are only used in local dev — Vercel's filesystem is read-only.
+if (!isProduction) {
+  transports.push(
+    new winston.transports.File({
+      filename: path.join(__dirname, '../../logs/error.log'),
+      level: 'error',
+      format: winston.format.combine(
+        winston.format.uncolorize(),
+        winston.format.json()
+      ),
+    }),
+    new winston.transports.File({
+      filename: path.join(__dirname, '../../logs/combined.log'),
+      format: winston.format.combine(
+        winston.format.uncolorize(),
+        winston.format.json()
+      ),
+    })
+  );
+}
 
 const logger = winston.createLogger({
   level: process.env.LOG_LEVEL || 'info',
