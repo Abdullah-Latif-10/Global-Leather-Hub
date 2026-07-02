@@ -50,7 +50,8 @@ export default function LoginPage() {
       });
       login(data.data);
       toast.success(`Welcome back, ${data.data.user.username}`);
-      navigate(from, { replace: true });
+      const isAdmin = data.data.user.role === "admin";
+      navigate(isAdmin ? "/admin" : from, { replace: true });
     } catch (err) {
       const rd = err.response?.data;
       if (rd?.needsVerification) {

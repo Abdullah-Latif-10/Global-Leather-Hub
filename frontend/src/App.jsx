@@ -9,6 +9,7 @@ import AdminLayout from "./components/AdminLayout";
 import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ProfilePage from "./pages/ProfilePage";
 import AboutPage from "./pages/AboutPage";
 import ContactPage from "./pages/ContactPage";
@@ -53,7 +54,7 @@ const AppLayout = ({ children }) => {
     };
   }, [hasVisibleToasts]);
 
-  const hideNavbar = ["/login", "/register"].includes(location.pathname);
+  const hideNavbar = ["/login", "/register", "/forgot-password"].includes(location.pathname);
   const isAdmin = location.pathname.startsWith("/admin");
   return (
     <>
@@ -171,6 +172,7 @@ export default function App() {
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/products" element={<ProductsPage />} />
             <Route path="/products/:id" element={<ProductDetailPage />} />
             <Route path="/about" element={<AboutPage />} />
