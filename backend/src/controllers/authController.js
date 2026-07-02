@@ -246,4 +246,99 @@ const logout = async (req, res, next) => {
   }
 };
 
-module.exports = { register, verifyEmail, resendOTP, login, refreshToken, logout };
+
+// POST /api/auth/forgot-password
+const forgotPassword = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      // Return success to prevent email enumeration, but do not send email
+      return res.status(200).json({
+        success: true,
+        message: 'If an account exists with that email, a verification code has been sent.',
+      });
+    }
+
+    const otp = generateOTP();
+    const otpExpiry = getOTPExpiry();
+
+    user.otp = {
+      code: otp,
+      expiresAt: otpExpiry,
+      purpose: 'password_change',
+    };
+    await user.save();
+
+    await sendOTPEmail(email, otp, 'password_change');
+
+    res.status(200).json({
+      success: true,
+      message: 'If an account exists with that email, a verification code has been sent.',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// POST /api/auth/reset-password
+const resetPassword = async (req, res, next) => {
+  try {
+    const { email, otp, password } = req.body;
+
+    const user = await User.findOne({ email }).select('+password +otp.code +otp.expiresAt +otp.purpose');
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid email or verification code.',
+      });
+    }
+
+    if (!user.otp || !user.otp.code || user.otp.purpose !== 'password_change') {
+      return res.status(400).json({
+        success: false,
+        message: 'No pending password reset request found.',
+      });
+    }
+
+    if (new Date() > user.otp.expiresAt) {
+      return res.status(400).json({
+        success: false,
+        message: 'Verification code has expired. Please request a new one.',
+      });
+    }
+
+    if (user.otp.code !== otp) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid verification code.',
+      });
+    }
+
+    user.password = password;
+    user.otp = undefined;
+    await user.save();
+
+    logger.info(`Password reset successfully for user: ${email}`);
+
+    res.status(200).json({
+      success: true,
+      message: 'Password reset successfully. You can now log in with your new password.',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = {
+  register,
+  verifyEmail,
+  resendOTP,
+  login,
+  refreshToken,
+  logout,
+  forgotPassword,
+  resetPassword,
+};

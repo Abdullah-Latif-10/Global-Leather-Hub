@@ -96,10 +96,42 @@ const changePasswordValidator = [
   }),
 ];
 
+const forgotPasswordValidator = [
+  body('email')
+    .trim()
+    .normalizeEmail()
+    .isEmail()
+    .withMessage('Please enter a valid email address'),
+  body('cfTurnstileToken')
+    .notEmpty()
+    .withMessage('Cloudflare verification is required'),
+];
+
+const resetPasswordValidator = [
+  body('email')
+    .trim()
+    .normalizeEmail()
+    .isEmail()
+    .withMessage('Please enter a valid email address'),
+  body('otp')
+    .isLength({ min: 6, max: 6 })
+    .isNumeric()
+    .withMessage('OTP must be a 6-digit number'),
+  ...passwordRules,
+  body('confirmPassword').custom((value, { req }) => {
+    if (value !== req.body.password) {
+      throw new Error('Passwords do not match');
+    }
+    return true;
+  }),
+];
+
 module.exports = {
   registerValidator,
   loginValidator,
   otpValidator,
   updateUsernameValidator,
   changePasswordValidator,
+  forgotPasswordValidator,
+  resetPasswordValidator,
 };

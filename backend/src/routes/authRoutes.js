@@ -9,12 +9,16 @@ const {
   login,
   refreshToken,
   logout,
+  forgotPassword,
+  resetPassword,
 } = require('../controllers/authController');
 
 const {
   registerValidator,
   loginValidator,
   otpValidator,
+  forgotPasswordValidator,
+  resetPasswordValidator,
 } = require('../validators/authValidators');
 
 const validate = require('../middleware/validate');
@@ -42,5 +46,7 @@ router.post('/resend-otp', otpLimiter, resendOTP);
 router.post('/login', authLimiter, loginValidator, validate, verifyCloudflareTurnstile, login);
 router.post('/refresh-token', refreshToken);
 router.post('/logout', protect, logout);
+router.post('/forgot-password', otpLimiter, forgotPasswordValidator, validate, verifyCloudflareTurnstile, forgotPassword);
+router.post('/reset-password', authLimiter, resetPasswordValidator, validate, resetPassword);
 
 module.exports = router;

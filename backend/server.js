@@ -9,7 +9,7 @@ const logsDir = path.join(__dirname, 'logs');
 if (!fs.existsSync(logsDir)) {
   fs.mkdirSync(logsDir, { recursive: true });
 }
-
+console.log(process.env.PORT)
 const PORT = process.env.PORT || 8080;
 
 const startServer = async () => {

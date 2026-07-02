@@ -24,11 +24,12 @@ const getProducts = async (req, res, next) => {
     const filter = { status: 'active' };
 
     if (req.query.category) filter.category = req.query.category;
-
+    console.log(req.query)
     if (req.query.search) {
       filter.$or = [
         { name: { $regex: req.query.search, $options: 'i' } },
         { description: { $regex: req.query.search, $options: 'i' } },
+        // { moq: { $regex: req.query.search, $options: 'i' } }
       ];
     }
 

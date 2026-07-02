@@ -1,11 +1,15 @@
 const logger = require('../utils/logger');
+require('dotenv').config();
 
 const verifyCloudflareTurnstile = async (req, res, next) => {
-  if (process.env.TURNSTILE_SKIP_VERIFY === 'true') return next();
+
+  if (process.env.TURNSTILE_SKIP_VERIFY === 'true')
+    return next();
 
   const token = req.body.cfTurnstileToken;
-  const secret = process.env.CLOUDFLARE_TURNSTILE_SECRET;
-
+  const secret = process.env.CLOUDFLARE_TURNSTILE_SECRET ? process.env.CLOUDFLARE_TURNSTILE_SECRET.trim() : null;  
+  // Debugging logs (You can remove these once it works!)
+  console.log('Secret Key Starts With:', secret ? secret.substring(0, 10) : 'none');
 
   if (!secret) {
     logger.warn('Cloudflare Turnstile: Secret key not configured. Skipping verification.');
@@ -14,7 +18,7 @@ const verifyCloudflareTurnstile = async (req, res, next) => {
 
   if (!token) {
     return res.status(400).json({
-      success: false,
+      success: true,
       message: 'Cloudflare verification token is required.',
     });
   }
@@ -23,7 +27,10 @@ const verifyCloudflareTurnstile = async (req, res, next) => {
     const formData = new URLSearchParams();
     formData.append('secret', secret);
     formData.append('response', token);
-    formData.append('remoteip', req.ip);
+    
+    // 💡 Commented out remoteip because localhost addresses (like ::1) 
+    // cause Cloudflare validation to fail during local testing.
+    // formData.append('remoteip', req.ip);
 
     const result = await fetch(
       'https://challenges.cloudflare.com/turnstile/v0/siteverify',
