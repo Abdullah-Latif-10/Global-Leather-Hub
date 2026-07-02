@@ -4,7 +4,7 @@ import { Eye, EyeOff, Mail, Lock, AlertCircle, ArrowRight } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "../utils/api";
 import { useAuth } from "../context/authContext";
-import CloudflareTurnstile from "../components/CloudflareTurnstile";
+
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -15,7 +15,7 @@ export default function LoginPage() {
   const [form, setForm] = useState({ email: "", password: "" });
   const [errors, setErrors] = useState({});
   const [showPw, setShowPw] = useState(false);
-  const [cfToken, setCfToken] = useState("");
+
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
@@ -33,7 +33,6 @@ export default function LoginPage() {
     )
       e.email = "Please enter a valid email";
     if (!form.password) e.password = "Password is required";
-    if (!cfToken) e.cf = "Please complete the verification";
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -46,7 +45,6 @@ export default function LoginPage() {
       const { data } = await api.post("/auth/login", {
         email: form.email,
         password: form.password,
-        cfTurnstileToken: cfToken,
       });
       login(data.data);
       toast.success(`Welcome back, ${data.data.user.username}`);
@@ -266,28 +264,7 @@ export default function LoginPage() {
               )}
             </div>
 
-            {/* Turnstile */}
-            <div className="animate-fade-up stagger-3">
-              <CloudflareTurnstile
-                onVerify={(t) => {
-                  setCfToken(t);
-                  setErrors((p) => ({ ...p, cf: "" }));
-                }}
-                onExpire={() => setCfToken("")}
-                onError={() =>
-                  setErrors((p) => ({
-                    ...p,
-                    cf: "Verification failed. Please retry.",
-                  }))
-                }
-              />
-              {errors.cf && (
-                <p className="mt-1.5 text-[11px] text-rust flex items-center gap-1 animate-fade-in">
-                  <AlertCircle className="w-3 h-3" />
-                  {errors.cf}
-                </p>
-              )}
-            </div>
+
 
             {errors.form && (
               <p className="text-[12px] text-rust flex items-center gap-1 animate-fade-in">

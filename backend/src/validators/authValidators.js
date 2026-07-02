@@ -40,10 +40,6 @@ const registerValidator = [
     }),
 
   ...passwordRules,
-
-  body('cfTurnstileToken')
-    .notEmpty()
-    .withMessage('Cloudflare verification is required'),
 ];
 
 const loginValidator = [
@@ -54,10 +50,6 @@ const loginValidator = [
     .withMessage('Please enter a valid email address'),
 
   body('password').notEmpty().withMessage('Password is required'),
-
-  body('cfTurnstileToken')
-    .notEmpty()
-    .withMessage('Cloudflare verification is required'),
 ];
 
 const otpValidator = [
@@ -102,9 +94,6 @@ const forgotPasswordValidator = [
     .normalizeEmail()
     .isEmail()
     .withMessage('Please enter a valid email address'),
-  body('cfTurnstileToken')
-    .notEmpty()
-    .withMessage('Cloudflare verification is required'),
 ];
 
 const resetPasswordValidator = [

@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Mail, Lock, Shield, AlertCircle, ArrowRight, ArrowLeft, CheckCircle2 } from "lucide-react";
 import toast from "react-hot-toast";
 import api from "../utils/api";
-import CloudflareTurnstile from "../components/CloudflareTurnstile";
+
 
 export default function ForgotPasswordPage() {
   const navigate = useNavigate();
@@ -15,7 +15,7 @@ export default function ForgotPasswordPage() {
   const [errors, setErrors] = useState({});
   const [showPw, setShowPw] = useState(false);
   const [showConfirmPw, setShowConfirmPw] = useState(false);
-  const [cfToken, setCfToken] = useState("");
+
   const [loading, setLoading] = useState(false);
 
   const handleEmailChange = (e) => {
@@ -39,7 +39,6 @@ export default function ForgotPasswordPage() {
     else if (!/^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/.test(email)) {
       e.email = "Please enter a valid email";
     }
-    if (!cfToken) e.cf = "Please complete the verification";
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -68,7 +67,6 @@ export default function ForgotPasswordPage() {
     try {
       const { data } = await api.post("/auth/forgot-password", {
         email,
-        cfTurnstileToken: cfToken,
       });
       toast.success(data.message || "Verification code sent to your email.");
       setStep("reset");
@@ -231,28 +229,7 @@ export default function ForgotPasswordPage() {
                   )}
                 </div>
 
-                {/* Turnstile */}
-                <div className="animate-fade-up stagger-2">
-                  <CloudflareTurnstile
-                    onVerify={(t) => {
-                      setCfToken(t);
-                      setErrors((p) => ({ ...p, cf: "" }));
-                    }}
-                    onExpire={() => setCfToken("")}
-                    onError={() =>
-                      setErrors((p) => ({
-                        ...p,
-                        cf: "Verification failed. Please retry.",
-                      }))
-                    }
-                  />
-                  {errors.cf && (
-                    <p className="mt-1.5 text-[11px] text-rust flex items-center gap-1 animate-fade-in">
-                      <AlertCircle className="w-3 h-3" />
-                      {errors.cf}
-                    </p>
-                  )}
-                </div>
+
 
                 {errors.form && (
                   <p className="text-[12px] text-rust flex items-center gap-1 animate-fade-in">
